@@ -1,191 +1,125 @@
-import uuid
 from datetime import datetime
-from flask_jwt_extended import get_jwt_identity
-from marshmallow import Schema, fields
+from statistics import mean
+from marshmallow import fields, validate
+from google.api_core.exceptions import NotFound
 
-from firestore import db, doc_to_dict, docs_to_dict
-
-from schemas.user import UserSchema
-from schemas.exceptions import BusinessError
+from schemas.common.base import CollectionSchema, DocumentSchema, SchemaTypes
 
 
-class __BaseSchema(Schema):
-    IRS = 'irs'
-    SAMPLES = 'samples'
-    FILES = 'files'
-    REVIEWS = 'reviews'
-
-    id = fields.Str(dump_only=True)
-    title = fields.Str()
+class IRSampleSchema(DocumentSchema):
+    title = fields.Str(required=True)
     description = fields.Str()
+    file_url = fields.Url(required=True)
+    owner = fields.Str(dump_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_SAMPLES, *args, **kwargs)
+
+    def set_owner(self, document: dict):
+        document['owner'] = self.security.requestor['id']
+        return document
 
 
-class IRSampleSchema(__BaseSchema):
-    sample_url = fields.Str()
+class IRFileSchema(DocumentSchema):
+    title = fields.Str(required=True)
+    description = fields.Str()
+    file_url = fields.Url(required=True)
+    owner = fields.Str(dump_only=True)
 
-    @classmethod
-    def get_document_path(cls, ir_id, sample_id):
-        return f'{cls.IRS}/{ir_id}/{cls.SAMPLES}/{sample_id}'
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_FILES, *args, **kwargs)
 
-    def create(self, ir_id, sample, dump=True):
-        sample_id = uuid.uuid1().hex
-        db.document(self.get_document_path(ir_id, sample_id)).set(sample)
-        sample['id'] = sample_id
-        return self.dump(sample) if dump else sample
-
-    def read(self, ir_id, sample_id, dump=True):
-        doc = db.document(self.get_document_path(ir_id, sample_id)).get()
-        sample = doc_to_dict(doc)
-        if sample:
-            return self.dump(sample) if dump else sample
-        raise BusinessError('Sample not found.', 404)
+    def set_owner(self, document: dict):
+        document['owner'] = self.security.requestor['id']
+        return document
 
 
-class IRFileSchema(__BaseSchema):
-    file_url = fields.Str()
-    # settings = fields.List(fields.Str())
-
-    @classmethod
-    def get_document_path(cls, ir_id, file_id):
-        return f'{cls.IRS}/{ir_id}/{cls.FILES}/{file_id}'
-
-    def create(self, ir_id, file, dump=True):
-        file_id = uuid.uuid1().hex
-        db.document(self.get_document_path(ir_id, file_id)).set(file)
-        file['id'] = file_id
-        return self.dump(file) if dump else file
-
-    def read(self, ir_id, file_id, dump=True):
-        doc = db.document(self.get_document_path(ir_id, file_id)).get()
-        file = doc_to_dict(doc)
-        if file:
-            return self.dump(file) if dump else file
-        raise BusinessError('File not found.', 404)
-
-
-class IRReviewSchema(__BaseSchema):
+class IRReviewSchema(DocumentSchema):
     USER_FIELDS = ('id', 'username', 'profile.country', 'profile.social_media')
 
+    title = fields.Str(required=True)
+    description = fields.Str()
+    rating = fields.Float(required=True, validate=validate.Range(min=0, max=5))
+    likes = fields.Integer(dump_only=True)
     created_at = fields.DateTime(missing=datetime.now())
-    user = fields.Nested(UserSchema(
-        only=USER_FIELDS
-    ))
-    rating = fields.Float()
-    likes = fields.Integer()
+    owner = fields.Dict(dump_only=True)
 
-    @classmethod
-    def get_user(cls):
-        user_id = get_jwt_identity()
-        user_schema = UserSchema(only=cls.USER_FIELDS)
-        owner = user_schema.read(user_id=user_id)
-        return user_schema.load(owner, partial=True)
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_REVIEWS, *args, **kwargs)
 
-    @classmethod
-    def get_document_path(cls, ir_id, review_id):
-        return f'{cls.IRS}/{ir_id}/{cls.REVIEWS}/{review_id}'
-
-    def create(self, ir_id, review, dump=True):
-        review_id = uuid.uuid1().hex
-        review['user'] = self.get_user()
-        db.document(self.get_document_path(ir_id, review_id)).set(review)
-        review['id'] = review_id
-        return self.dump(review) if dump else review
-
-    def read(self, ir_id, review_id, dump=True):
-        doc = db.document(self.get_document_path(ir_id, review_id)).get()
-        review = doc_to_dict(doc)
-        if review:
-            return self.dump(review) if dump else review
-        raise BusinessError('Review not found.', 404)
+    def set_owner(self, document: dict):
+        requestor = self.security.requestor
+        document['owner'] = {
+            'id': requestor['id'],
+            'username': requestor['username'],
+            'profile': {
+                'country': requestor.get('country'),
+                'social_media': requestor.get('social_media', [])
+            }
+        }
+        return document
 
 
-class IRSampleListSchema(__BaseSchema):
+class IRSamplesSchema(CollectionSchema):
     samples = fields.List(fields.Nested(IRSampleSchema()))
 
-    @classmethod
-    def get_collection_path(cls, ir_id):
-        return f'{cls.IRS}/{ir_id}/{cls.SAMPLES}'
-
-    def read(self, ir_id, dump=True):
-        docs = db.collection(self.get_collection_path(ir_id)).stream()
-        samples = docs_to_dict(self.SAMPLES, docs)
-        return self.dump(samples) if dump else samples
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_SAMPLES, *args, **kwargs)
 
 
-class IRFileListSchema(__BaseSchema):
+class IRFilesSchema(CollectionSchema):
     files = fields.List(fields.Nested(IRFileSchema()))
 
-    @classmethod
-    def get_collection_path(cls, ir_id):
-        return f'{cls.IRS}/{ir_id}/{cls.FILES}'
-
-    def read(self, ir_id, dump=True):
-        docs = db.collection(self.get_collection_path(ir_id)).stream()
-        files = docs_to_dict(self.FILES, docs)
-        return self.dump(files) if dump else files
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_FILES, *args, **kwargs)
 
 
-class IRReviewListSchema(__BaseSchema):
+class IRReviewsSchema(CollectionSchema):
     reviews = fields.List(fields.Nested(IRReviewSchema()))
 
-    @classmethod
-    def get_collection_path(cls, ir_id):
-        return f'{cls.IRS}/{ir_id}/{cls.REVIEWS}'
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS_REVIEWS, *args, **kwargs)
+        
 
-    def read(self, ir_id, dump=True):
-        docs = db.collection(self.get_collection_path(ir_id)).stream()
-        reviews = docs_to_dict(self.REVIEWS, docs)
-        return self.dump(reviews) if dump else reviews
-
-
-class IRSchema(__BaseSchema):
+class IRSchema(DocumentSchema):
+    title = fields.Str(required=True)
+    description = fields.Str()
     published_at = fields.DateTime(missing=datetime.now())
-    maker = fields.Str() # TODO Definirlo como un usuario
-    pics_urls = fields.List(fields.Str())
-    rating = fields.Float()
+    owner = fields.Dict(dump_only=True)
+    pics_urls = fields.List(fields.Url())
+    premium = fields.Boolean(missing=False)
     samples = fields.List(fields.Nested(IRSampleSchema()))
     files = fields.List(fields.Nested(IRFileSchema()))
-    reviews = fields.List(fields.Nested(IRReviewSchema()))
+    reviews = fields.List(fields.Nested(IRReviewSchema()), dump_only=True)
+    stats = fields.Dict(
+        reviews = fields.Integer(dump_only=True),
+        rating = fields.Float(dump_only=True)
+    ) 
 
-    @classmethod
-    def get_document_path(cls, ir_id):
-        return f'{cls.IRS}/{ir_id}'
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS, *args, **kwargs)
 
-    def create(self, ir, dump=True):
-        ir_id = uuid.uuid1().hex
-        samples = ir.pop('samples', None)
-        files = ir.pop('files', None)
-        db.document(self.get_document_path(ir_id)).set(ir)
-        ir['id'] = ir_id
-        if samples:
-            ir['samples'] = []
-            for sample in samples:
-                ir['samples'].append(IRSampleSchema().create(ir_id, sample, dump=False))
-        if files:
-            ir['files'] = []
-            for file in files:
-                ir['files'].append(IRFileSchema().create(ir_id, file, dump=False))
-        return self.dump(ir) if dump else ir
+    def set_owner(self, document: dict):
+        requestor = self.security.requestor
+        document['owner'] = {
+            'id': requestor['id'],
+            'username': requestor['username'],
+            'profile': {
+                'country': requestor.get('country'),
+                'social_media': requestor.get('social_media', [])
+            }
+        }
+        return document
 
-    def read(self, ir_id, samples=False, files=False, reviews=False, dump=True):
-        doc = db.document(self.get_document_path(ir_id)).get()
-        ir = doc_to_dict(doc)
-        if ir:
-            if samples:
-                ir.update(IRSampleListSchema().read(ir['id'], dump=False))
-            if files:
-                ir.update(IRFileListSchema().read(ir['id'], dump=False))
-            if reviews:
-                ir.update(IRReviewListSchema().read(ir['id'], dump=False))
-            return self.dump(ir) if dump else ir
-        raise BusinessError('IR not found.', 404)
+    # @classmethod
+    # def uptade_stats(cls, ir_id):
+    #     try:
+    #         reviews = IRReviewsSchema().read_list(ir_id)
 
-
-
-
-
-
-
-
-
-
+    #         ir_ref = db.document(cls.get_document_path(ir_id))
+    #         ir_ref.update({
+    #             'stats.reviews': len(reviews),
+    #             'stats.rating': mean([review['rating'] for review in reviews])
+    #         })
+    #     except NotFound:
+    #         raise BusinessError('IR not found.', 404)

@@ -132,3 +132,5 @@ dmypy.json
 *.log
 .vscode/
 myvenv/
+test.py
+test

@@ -4,10 +4,10 @@ from flask_jwt_extended import get_jwt_identity
 from marshmallow import Schema, fields, validate
 from google.api_core.exceptions import NotFound
 
-from firestore import firestore, db, doc_to_dict
+from gcp.firestore import firestore, db, doc_to_dict
 
 from schemas.user import UserSchema
-from schemas.exceptions import BusinessError
+from schemas.common.exceptions import BusinessError
 
 
 class __BaseSchema(Schema):
