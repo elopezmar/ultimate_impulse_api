@@ -2,14 +2,14 @@ from flask_jwt_extended import create_access_token, jwt_required
 from werkzeug.security import safe_str_cmp
 from marshmallow import ValidationError
 
-from resources.common.base import BaseResource
+from resources.common.base import CollectionResource, DocumentResource
 
 from schemas.user import UserSchema, UsersSchema
 from schemas.common.exceptions import BusinessError
 from schemas.common.security import Roles, Methods, Ownerships
 
 
-class UserLogin(BaseResource):
+class UserLogin(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(UserSchema(), *args, **kwargs)
         self.security.set_privilege(Roles.ANONYMOUS, Methods.POST, Ownerships.ALL)
@@ -44,12 +44,12 @@ class UserLogin(BaseResource):
             return err.message
 
 
-class UserVerify(BaseResource):
+class UserVerify(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(UserSchema(), *args, **kwargs)
         self.security.set_privilege(Roles.ANONYMOUS, Methods.PUT, Ownerships.ALL)
 
-    def post(self):
+    def put(self):
         try:
             self.load_request_data()
 
@@ -66,43 +66,38 @@ class UserVerify(BaseResource):
             return err.message
 
 
-class User(BaseResource):
+class User(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(UserSchema(), *args, **kwargs)
         self.security.set_privilege(Roles.ANONYMOUS, Methods.POST, Ownerships.ALL)
 
+    @jwt_required(optional=True)
     def post(self):
         try:
             self.load_request_data()
             self.schema.partial = ('id',)
 
             user = self.schema.load(self.json)
-            
-            registered_users = UsersSchema().get_documents(
-                filters=[
-                    ('email', '==', user['email']),
-                    ('username', '==', user['username'])
-                ],
-                to_list=True
-            )
-            
-            email_exists = False
-            username_exists = False
-            
-            for registered_user in registered_users:
-                if user['email'] == registered_user['email']:
-                    email_exists = True
-                if user['username'] == registered_user['username']:
-                    username_exists = True
 
-            if email_exists and username_exists:
-                raise BusinessError('Email and username already exists.', 400)
-            elif email_exists:
+            if Roles.exists(user['role']):
+                if user['role'] in (Roles.ADMIN, Roles.COLLABORATOR):
+                    if self.security.requestor['role'] == Roles.ADMIN:
+                        user['verified'] = True
+                    else:
+                        raise BusinessError('Only admin users can create admins or collaborators.', 400)
+                elif user['role'] == Roles.ANONYMOUS:
+                    user['role'] = Roles.USER
+
+            if len(UsersSchema().get_documents(
+                filters=[('email', '==', user['email'])],
+                to_list=True)) > 0:
                 raise BusinessError('Email already exists.', 400)
-            elif username_exists:
+
+            if len(UsersSchema().get_documents(
+                filters=[('username', '==', user['username'])],
+                to_list=True)) > 0:
                 raise BusinessError('Username already exists.', 400)
 
-            user['role'] = Roles.USER
             user = self.schema.set_document(user)
             return self.schema.dump(user), 201
         except ValidationError as err:
@@ -197,6 +192,14 @@ class User(BaseResource):
             return err.message
     
 
+class Users(CollectionResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(UsersSchema(), *args, **kwargs)
 
-
-    
+    def get(self):
+        try:
+            self.load_request_data()
+            users = self.schema.get_documents()
+            return self.schema.dump(users), 200
+        except BusinessError as err:
+            return err.message

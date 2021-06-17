@@ -212,5 +212,5 @@ class CollectionSchema(Schema):
         return [{'id': doc.id, **doc.to_dict()} for doc in documents]
 
     def documents_to_dict(self, documents):
-        return {self.collection_name.lower(): self.documents_to_list(documents)}
+        return {self.collection_name: self.documents_to_list(documents)}
         

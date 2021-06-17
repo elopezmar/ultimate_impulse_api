@@ -32,6 +32,8 @@ class Storage():
             raise BusinessError(f"File {file_url} not found.", 404)
 
     def replace_file(self, temp_file_url, target_file_url, make_public=False):
+        temp_file_url = self.get_public_url(temp_file_url)
+        target_file_url = self.get_public_url(target_file_url)
         temp_file_name = self.get_file_name(temp_file_url)
         target_file_name = self.get_file_name(target_file_url)
 
@@ -47,8 +49,8 @@ class Storage():
 
         return target_blob.public_url
         
-    def get_signed_url(self, file_url):
-        file_name = self.get_file_name(file_url)
+    def get_signed_url(self, public_url):
+        file_name = self.get_file_name(public_url)
         blob = self.bucket.blob(file_name)
         signed_url = blob.generate_signed_url(
             version='v4',
@@ -58,7 +60,15 @@ class Storage():
         )
         return signed_url
 
+    def get_public_url(self, signed_url):
+        if signed_url and '?' in signed_url:
+            return signed_url.split('?')[-1]
+        return signed_url
+
     def get_target_file_url(self, temp_file_url, current_file_url=None):
+        temp_file_url = self.get_public_url(temp_file_url)
+        current_file_url = self.get_public_url(current_file_url)
+
         if temp_file_url == current_file_url:
             return current_file_url
 

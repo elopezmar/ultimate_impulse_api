@@ -1,7 +1,9 @@
 from datetime import datetime
+from schemas.common.exceptions import BusinessError
 from marshmallow import Schema, fields
 
 from schemas.common.base import DocumentSchema, CollectionSchema, SchemaTypes
+from schemas.common.security import Roles
 
 
 class UserSchema(DocumentSchema):
@@ -10,7 +12,7 @@ class UserSchema(DocumentSchema):
     username = fields.Str(required=True)
     created_at = fields.DateTime(missing=datetime.now())
     verified = fields.Boolean(dump_only=True)
-    role = fields.Str(dump_only=True)
+    role = fields.Str(missing=Roles.USER)
     profile = fields.Nested(Schema.from_dict(dict(
         first_name = fields.Str(),
         last_name = fields.Str(),

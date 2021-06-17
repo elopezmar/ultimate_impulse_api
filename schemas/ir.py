@@ -1,7 +1,7 @@
 from datetime import datetime
+from gcp.storage import Storage
 from statistics import mean
 from marshmallow import fields, validate
-from google.api_core.exceptions import NotFound
 
 from schemas.common.base import CollectionSchema, DocumentSchema, SchemaTypes
 
@@ -31,6 +31,18 @@ class IRFileSchema(DocumentSchema):
 
     def set_owner(self, document: dict):
         document['owner'] = self.security.requestor['id']
+        return document
+
+    def manage_file(self, document: dict, ir: dict):
+        requestor_id = self.security.requestor.get('id')
+        premium = ir.get('premium', False)
+        if premium:
+            if requestor_id:
+                document['file_url'] = Storage().get_signed_url(
+                    document['file_url']
+                )
+            else:
+                document.pop('file_url')
         return document
 
 
@@ -73,6 +85,15 @@ class IRFilesSchema(CollectionSchema):
     def __init__(self, *args, **kwargs):
         super().__init__(SchemaTypes.IRS_FILES, *args, **kwargs)
 
+    def manage_files(self, documents: dict, ir: dict):
+        ir_file_schema = IRFileSchema()
+        ir_file_schema.security = self.security
+
+        for file in documents[self.collection_name]:
+            file = ir_file_schema.manage_file(file, ir)
+
+        return documents
+
 
 class IRReviewsSchema(CollectionSchema):
     reviews = fields.List(fields.Nested(IRReviewSchema()))
@@ -111,15 +132,21 @@ class IRSchema(DocumentSchema):
         }
         return document
 
-    # @classmethod
-    # def uptade_stats(cls, ir_id):
-    #     try:
-    #         reviews = IRReviewsSchema().read_list(ir_id)
+    def update_stats(self, ir_id):
+        reviews = IRReviewsSchema().get_documents((ir_id,), to_list=True)
+        ir = {
+            'id': ir_id,
+            'stats': {
+                'reviews': len(reviews),
+                'rating': mean([review['rating'] for review in reviews])
+            }
+        }
+        self.update_document(ir)
 
-    #         ir_ref = db.document(cls.get_document_path(ir_id))
-    #         ir_ref.update({
-    #             'stats.reviews': len(reviews),
-    #             'stats.rating': mean([review['rating'] for review in reviews])
-    #         })
-    #     except NotFound:
-    #         raise BusinessError('IR not found.', 404)
+
+class IRsSchema(CollectionSchema):
+    irs = fields.List(fields.Nested(IRSchema()))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(SchemaTypes.IRS, *args, **kwargs)
+

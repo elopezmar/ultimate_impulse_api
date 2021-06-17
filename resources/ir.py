@@ -1,7 +1,7 @@
 from flask_jwt_extended import jwt_required
 from marshmallow import ValidationError
 
-from resources.common.base import BaseResource
+from resources.common.base import CollectionResource, DocumentResource
 
 from gcp.storage import Storage
 
@@ -12,13 +12,14 @@ from schemas.ir import (
     IRSampleSchema, 
     IRSamplesSchema, 
     IRSchema, 
-    IRReviewSchema
+    IRReviewSchema,
+    IRsSchema
 )
 from schemas.common.exceptions import BusinessError
 from schemas.common.security import Roles, Methods
 
 
-class IRSample(BaseResource):
+class IRSample(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(IRSampleSchema(), *args, **kwargs)
         self.security.remove_privilege(Roles.USER, Methods.POST)
@@ -55,7 +56,7 @@ class IRSample(BaseResource):
             return err.message
 
     
-class IRFile(BaseResource):
+class IRFile(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(IRFileSchema(), *args, **kwargs)
         self.security.remove_privilege(Roles.USER, Methods.POST)
@@ -67,14 +68,20 @@ class IRFile(BaseResource):
         try:
             self.load_request_data()
             self.schema.partial = ('id',)
+
             file = self.schema.load(self.json)
-            make_public = True# TODO: Verificar si el IR es premium
+            
+            ir = IRSchema().get_document({'id': ir_id})
+            make_public = not ir.get('premium', False)
             temp_file_url = file['file_url']
             target_file_url = self.storage.get_target_file_url(temp_file_url)
+
             file['file_url'] = target_file_url
             file = self.schema.set_owner(file)
             file = self.schema.set_document(file, (ir_id,))
+            
             self.storage.replace_file(temp_file_url, target_file_url, make_public)
+            
             return self.schema.dump(file), 201
         except ValidationError as err:
             return err.messages
@@ -84,8 +91,11 @@ class IRFile(BaseResource):
     def get(self, ir_id):
         try:
             self.load_request_data()
+            ir = {'id': ir_id}
+            ir = IRSchema().get_document(ir)
             file = {'id': self.args['id']}
             file = self.schema.get_document(file, (ir_id,))
+            file = self.schema.manage_file(file, ir)
             return self.schema.dump(file), 200
         except KeyError:
             return {'message': 'An id must be provided as parameter.'}, 400
@@ -93,18 +103,24 @@ class IRFile(BaseResource):
             return err.message
 
 
-class IRReview(BaseResource):
+class IRReview(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(IRReviewSchema(), *args, **kwargs)
 
     @jwt_required()
     def post(self, ir_id):
         try:
+            #TODO: Solo una review por usuario
+
             self.load_request_data()
             self.schema.partial = ('id',)
+
             review = self.schema.load(self.json)
             review = self.schema.set_owner(review)
             review = self.schema.set_document(review, (ir_id,))
+
+            IRSchema().update_stats(ir_id)
+
             return self.schema.dump(review), 201
         except ValidationError as err:
             return err.messages
@@ -123,7 +139,7 @@ class IRReview(BaseResource):
             return err.message
 
 
-class IR(BaseResource):
+class IR(DocumentResource):
     def __init__(self, *args, **kwargs):
         super().__init__(IRSchema(), *args, **kwargs)
         self.security.remove_privilege(Roles.USER, Methods.POST)
@@ -195,22 +211,88 @@ class IR(BaseResource):
         except BusinessError as err:
             return err.message
 
+    @jwt_required(optional=True)
     def get(self):
         try:
             self.load_request_data()
+
+            ir_samples_schema = IRSamplesSchema()
+            ir_files_schema = IRFilesSchema()
+            ir_reviews_schema = IRReviewsSchema()
+
+            ir_files_schema.security = self.security
             
             ir = {'id': self.args['id']}
             ir = self.schema.get_document(ir)
 
             if self.args.get('samples', '').lower() == 'true':
-                ir.update(IRSamplesSchema().get_documents((ir['id'],)))
+                ir.update(ir_samples_schema.get_documents((ir['id'],)))
             if self.args.get('files', '').lower() == 'true':
-                ir.update(IRFilesSchema().get_documents((ir['id'],)))
+                files = ir_files_schema.get_documents((ir['id'],))
+                files = ir_files_schema.manage_files(files, ir)
+                ir.update(files)
             if self.args.get('reviews', '').lower() == 'true':
-                ir.update(IRReviewsSchema().get_documents((ir['id'],)))
+                ir.update(ir_reviews_schema.get_documents((ir['id'],)))
 
             return self.schema.dump(ir), 200
         except KeyError:
             return {'message': 'An id must be provided as parameter.'}, 400
         except BusinessError as err:
             return err.message
+
+
+class IRSamples(CollectionResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(IRSamplesSchema(), *args, **kwargs)
+
+    def get(self, ir_id):
+        try:
+            self.load_request_data()
+            samples = self.schema.get_documents((ir_id,))
+            return self.schema.dump(samples), 200
+        except BusinessError as err:
+            return err.message
+
+
+class IRFiles(CollectionResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(IRFilesSchema(), *args, **kwargs)
+
+    @jwt_required(optional=True)
+    def get(self, ir_id):
+        try:
+            self.load_request_data()
+            ir = {'id': ir_id}
+            ir = IRSchema().get_document(ir)
+            files = self.schema.get_documents((ir_id,))
+            files = self.schema.manage_files(files, ir)
+            return self.schema.dump(files), 200
+        except BusinessError as err:
+            return err.message
+
+
+class IRReviews(CollectionResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(IRReviewsSchema(), *args, **kwargs)
+
+    def get(self, ir_id):
+        try:
+            self.load_request_data()
+            reviews = self.schema.get_documents((ir_id,))
+            return self.schema.dump(reviews), 200
+        except BusinessError as err:
+            return err.message
+
+
+class IRs(CollectionResource):
+    def __init__(self, *args, **kwargs):
+        super().__init__(IRsSchema(), *args, **kwargs)
+
+    def get(self):
+        try:
+            self.load_request_data()
+            irs = self.schema.get_documents()
+            return self.schema.dump(irs), 200
+        except BusinessError as err:
+            return err.message
+

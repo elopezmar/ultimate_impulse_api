@@ -6,6 +6,21 @@ class Roles():
     USER = 'user'
     ANONYMOUS = 'anonymous'
 
+    @classmethod
+    def all(cls):
+        return [
+            cls.ADMIN,
+            cls.COLLABORATOR,
+            cls.USER,
+            cls.ANONYMOUS
+        ]
+    
+    @classmethod
+    def exists(cls, role: str):
+        if not role in cls.all():
+            raise BusinessError(f"Role {role} doesn't exists.", 400)
+        return True
+
 
 class Methods():
     POST = 'post'
@@ -57,12 +72,14 @@ class Security():
         self.method = None
         self.requestor = {
             'id': None,
-            'role': self.roles[Roles.ANONYMOUS]
+            'role': Roles.ANONYMOUS,
+            'privileges': self.roles[Roles.ANONYMOUS]['privileges']
         }
         
     def set_requestor(self, requestor: dict):
         self.requestor = requestor
-        self.requestor['role'] = self.roles[requestor.get('role', Roles.ANONYMOUS)]
+        self.requestor['role'] = requestor.get('role', Roles.ANONYMOUS)
+        self.requestor['privileges'] = self.roles[self.requestor['role']]['privileges']
 
     def set_privilege(self, role: str, mehtod: str, ownership: str):
         self.roles[role]['privileges'][mehtod] = {'ownership': ownership}
@@ -73,14 +90,14 @@ class Security():
     def verify_privilege(self):
         if self.enable:
             try:
-                self.requestor['role']['privileges'][self.method]
+                self.requestor['privileges'][self.method]
             except KeyError:
                 raise BusinessError(f"User doesn't have {self.method} privilege.", 400)
     
     def verify_ownership(self, owner_id: str):
         if self.enable:
             try:
-                ownership = self.requestor['role']['privileges'][self.method]['ownership']
+                ownership = self.requestor['privileges'][self.method]['ownership']
                 if owner_id != self.requestor['id'] and ownership != Ownerships.ALL:
                     raise BusinessError(f"User can't execute {self.method} privilege on the resource.", 400)
             except KeyError:
