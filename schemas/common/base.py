@@ -1,14 +1,13 @@
+from gcp.storage import Storage
 import uuid
 from typing import Tuple
 from google.cloud.firestore_v1.base_document import DocumentSnapshot
 from marshmallow import Schema, fields
-from marshmallow.fields import List
 
 from gcp.firestore import db
 
 from schemas.common.exceptions import BusinessError
 from schemas.common.security import Security
-
 
 class SchemaTypes():
     FORUMS = {
@@ -69,13 +68,56 @@ class SchemaTypes():
     }
 
 
+class Handlers():
+    class Methods():
+        ALL = 'all'
+        GET = 'get'
+        SET = 'set'
+        UPDATE = 'update'
+        DELETE = 'delete'
+
+        @classmethod
+        def all(cls):
+            return [cls.GET, cls.SET, cls.UPDATE, cls.DELETE]
+    
+    class Events():
+        ON_START = 'on_start'
+        ON_SUCCESS = 'on_success'
+        ON_ERROR = 'on_error'
+
+        @classmethod
+        def all(cls):
+            return [cls.ON_START, cls.ON_SUCCESS, cls.ON_ERROR]
+
+    def __init__(self):
+        self.method = None
+        self.handlers = {}
+
+        all_methods = Handlers.Methods.all()
+        all_events = Handlers.Events.all()
+
+        for method in all_methods:
+            self.handlers[method] = {}
+            for event in all_events:
+                self.handlers[method][event] = []
+
+    def add(self, method: str, event: str, func: callable):
+        if method == self.Methods.ALL:
+            for method in self.Methods.all():
+                self.handlers[method][event].append(func)
+        else:
+            self.handlers[method][event].append(func)
+
+    def execute(self, event: str, *args, **kwargs):
+        if self.method:
+            for handler in self.handlers[self.method][event]:
+                handler(*args, **kwargs)
+        
+
 class DocumentSchema(Schema):
     id = fields.Str(required=True)
 
-    def __init__(self, 
-            schema_type: dict,
-            *args, **kwargs
-        ):
+    def __init__(self, schema_type: dict, security: Security=Security(False), *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.schema_id = schema_type['schema_id']
@@ -83,79 +125,77 @@ class DocumentSchema(Schema):
         self.collection_name = schema_type['collection_name']
         self.collection_pattern = schema_type['collection_pattern']
         self.schema_owner_keys = schema_type['schema_owner_keys']
-        
-        self.security = Security(False)
+        self.security = security
+        self.storage = Storage(self.schema_name)
+        self.handlers = Handlers()
 
-    def get_document(self, document: dict, collection_path_ids: Tuple=(), silent=False):
-        document_path_ids = (*collection_path_ids, document['id'])
-        document = self.get_document_ref(document_path_ids).get()
-        if document.exists:
-            document = self.document_to_dict(document)
-            self.security_validations(document)
+    def get_document(self, document: dict, path_keys: Tuple=(), silent=False):
+        self.handlers.method = Handlers.Methods.GET
+
+        document_ref = self.get_document_ref(path_keys, document)
+        document = self.document_to_dict(document_ref.get())
+
+        if document:
+            self.handlers.execute(Handlers.Events.ON_START, document, path_keys)
+            self.handlers.execute(Handlers.Events.ON_SUCCESS, document, path_keys)
             return document
+
         if not silent:
+            self.handlers.execute(Handlers.Events.ON_ERROR, document, path_keys)
             raise BusinessError(f'{self.schema_name} not found.', 404)
     
-    def set_document(self, document: dict, collection_path_ids: Tuple=()):
-        self.security_validations(document)
-        document_id = self.get_new_document_id()
-        document_path_ids = (*collection_path_ids, document_id)
-        self.get_document_ref(document_path_ids).set(document)
-        document['id'] = document_id
+    def set_document(self, document: dict, path_keys: Tuple=()):
+        self.handlers.method = Handlers.Methods.SET
+        self.handlers.execute(Handlers.Events.ON_START, document, path_keys)
+
+        document_ref = self.get_document_ref(path_keys, document)
+        document_ref.set(document)
+        document = self.document_to_dict(document_ref.get())
+
+        self.handlers.execute(Handlers.Events.ON_SUCCESS, document, path_keys)
         return document
 
-    def update_document(self, document: dict, collection_path_ids: Tuple=(), silent=False):
-        document_path_ids = (*collection_path_ids, document['id'])
-        document_ref = self.get_document_ref(document_path_ids)
-        current_document = document_ref.get()
-        if current_document.exists:
-            current_document = self.document_to_dict(current_document)
-            self.security_validations(current_document)
-            document.pop('id')
-            document = self.dict_to_dot_notation(document)
-            document_ref.update(document)
-            return self.document_to_dict(document_ref.get())
-        if not silent:
-            raise BusinessError(f'{self.schema_name} not found.', 404)
+    def update_document(self, document: dict, path_keys: Tuple=(), silent=False):
+        self.handlers.method = Handlers.Methods.UPDATE
 
-    def delete_document(self, document: dict, collection_path_ids: Tuple=(), silent=False):
-        document_path_ids = (*collection_path_ids, document['id'])
-        document_ref = self.get_document_ref(document_path_ids)
-        document = document_ref.get()
-        if document.exists:
-            document = self.document_to_dict(document)
-            self.security_validations(document)
-            document_ref.delete()
+        document_ref = self.get_document_ref(path_keys, document)
+        old_document = self.document_to_dict(document_ref.get())
+
+        if old_document:
+            self.handlers.execute(Handlers.Events.ON_START, old_document, path_keys)
+
+            document_ref.update(self.dict_to_dot_notation(document))
+            document = self.document_to_dict(document_ref.get())
+
+            self.handlers.execute(Handlers.Events.ON_SUCCESS, document, path_keys)
             return document
+
         if not silent:
+            self.handlers.execute(Handlers.Events.ON_ERROR, document, path_keys)
             raise BusinessError(f'{self.schema_name} not found.', 404)
 
-    def security_validations(self, document: dict):
-        owner_id = self.get_document_owner_id(document)
-        self.security.verify_ownership(owner_id)
+    def delete_document(self, document: dict, path_keys: Tuple=(), silent=False):
+        self.handlers.method = Handlers.Methods.DELETE
 
-    def get_document_ref(self, document_path_ids: Tuple):
-        document_path = self.get_document_path(document_path_ids)
-        return db.document(document_path)
+        document_ref = self.get_document_ref(path_keys, document)
+        document = self.document_to_dict(document_ref.get())
 
-    def get_document_path(self, document_path_ids: Tuple):
-        return self.collection_pattern.format(*document_path_ids)
+        if document:
+            self.handlers.execute(Handlers.Events.ON_START, document, path_keys)
+            document_ref.delete()
+            self.handlers.execute(Handlers.Events.ON_SUCCESS, document, path_keys)
+            return document
 
-    def get_document_owner_id(self, document: dict):
-        try:
-            owner_id = None
-            for key in self.schema_owner_keys:
-                if owner_id == None:
-                    owner_id = document[key]
-                else:
-                    owner_id = owner_id[key]
-            return owner_id
-        except KeyError:
-            return None
+        if not silent:
+            self.handlers.execute(Handlers.Events.ON_ERROR, document, path_keys)
+            raise BusinessError(f'{self.schema_name} not found.', 404)
 
-    @staticmethod
-    def get_new_document_id():
-        return uuid.uuid1().hex
+    def get_document_ref(self, path_keys: Tuple, document: dict):
+        return db.document(
+            self.collection_pattern.format(
+                *path_keys, document.pop('id', uuid.uuid1().hex)
+            )
+        )
 
     @staticmethod
     def document_to_dict(document: DocumentSnapshot):
@@ -164,7 +204,7 @@ class DocumentSchema(Schema):
         return None
 
     @classmethod
-    def dict_to_dot_notation(cls, d, prefix=None):
+    def dict_to_dot_notation(cls, d: dict, prefix=None):
         dic_doted = {}
         for k in d:
             if isinstance(d[k], dict):
@@ -187,30 +227,30 @@ class CollectionSchema(Schema):
         self.collection_name = schema_type['collection_name']
         self.collection_pattern = schema_type['collection_pattern']
         self.schema_owner_keys = schema_type['schema_owner_keys']
-        
         self.security = Security(False)
+        self.handlers = Handlers()
 
-    def get_documents(self, collection_path_ids: Tuple=(), filters: List=[], to_list=False):
-        collection_ref = self.get_collection_ref(collection_path_ids)
+    def get_documents(self, path_keys: Tuple=(), filters: list=[], to_list=False):
+        self.handlers.method = Handlers.Methods.GET
+        collection_ref = self.get_collection_ref(path_keys)
         
         for filter in filters:
             collection_ref = collection_ref.where(*filter)
-        documents = collection_ref.stream()
 
-        if to_list:
-            return self.documents_to_list(documents)
-        return self.documents_to_dict(documents)
+        documents = self.documents_to_list(collection_ref.stream())
+        self.handlers.execute(Handlers.Events.ON_SUCCESS, documents, path_keys)
 
-    def get_collection_path(self, collection_path_ids: Tuple=()):
-        return self.collection_pattern[:-3].format(*collection_path_ids)
-        
-    def get_collection_ref(self, collection_path_ids: Tuple=()):
-        collection_path = self.get_collection_path(collection_path_ids)
-        return db.collection(collection_path)
+        if not to_list:
+            return self.documents_to_dict(documents)
+        return documents
+
+    def get_collection_ref(self, path_keys: Tuple=()):
+        return db.collection(
+            self.collection_pattern[:-3].format(*path_keys)
+        )
 
     def documents_to_list(self, documents):
         return [{'id': doc.id, **doc.to_dict()} for doc in documents]
 
-    def documents_to_dict(self, documents):
-        return {self.collection_name: self.documents_to_list(documents)}
-        
+    def documents_to_dict(self, documents: list):
+        return {self.collection_name: documents}

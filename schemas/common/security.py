@@ -102,12 +102,3 @@ class Security():
                     raise BusinessError(f"User can't execute {self.method} privilege on the resource.", 400)
             except KeyError:
                 raise BusinessError('Security config error.', 500)
-
-
-
-            
-
-
-
-
-        

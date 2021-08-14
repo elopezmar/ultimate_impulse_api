@@ -1,12 +1,12 @@
 from datetime import datetime
-from schemas.common.exceptions import BusinessError
+
 from marshmallow import Schema, fields
 
-from schemas.common.base import DocumentSchema, CollectionSchema, SchemaTypes
-from schemas.common.security import Roles
+from models.utils import Roles
 
 
-class UserSchema(DocumentSchema):
+class UserSchema(Schema):
+    id = fields.Str(required=True)
     email = fields.Email(required=True)
     password = fields.Str(required=True, load_only=True)
     username = fields.Str(required=True)
@@ -24,17 +24,5 @@ class UserSchema(DocumentSchema):
     stats = fields.Nested(Schema.from_dict(dict(
         topics_created = fields.Number()
     )))
-
-    #Aux fields for update
     old_password = fields.Str(load_only=True)
     new_password = fields.Str(load_only=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(SchemaTypes.USERS, *args, **kwargs)
-        
-
-class UsersSchema(CollectionSchema):
-    users = fields.List(fields.Nested(UserSchema()))
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(SchemaTypes.USERS, *args, **kwargs)
