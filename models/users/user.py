@@ -119,6 +119,12 @@ class User():
         File(url=self.profile.pic_url).delete()
         return self
 
+    def owner_data(self) -> User:
+        owner = User(self.id)
+        owner.username = self.username
+        owner.profile.country = self.profile.country
+        owner.profile.social_media = self.profile.social_media
+        return owner
 
     def login(self) -> Tuple[str, User]:
         for user in UserList.get([('email', '==', self.email)]).users:

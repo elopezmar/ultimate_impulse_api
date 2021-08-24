@@ -7,6 +7,7 @@ from google.auth import compute_engine
 from google.auth.transport import requests
 
 from cloud_storage.client import client
+from models.exceptions import BusinessError
 
 
 class File():
@@ -55,9 +56,9 @@ class File():
         
     def overwrite(self, data: File) -> File:
         if self.name == data.name:
-            return 
+            return self
         if not data.blob.exists():
-            raise f'File {data.url} does not exists.'
+            raise BusinessError(f'File {data.url} does not exists.', 404)
         if self.blob.exists():
             self.blob.delete()
 

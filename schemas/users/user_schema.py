@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from marshmallow import Schema, fields
@@ -26,3 +28,12 @@ class UserSchema(Schema):
     )))
     old_password = fields.Str(load_only=True)
     new_password = fields.Str(load_only=True)
+
+    @staticmethod
+    def owner_data() -> UserSchema:
+        return UserSchema(only=(
+            'id', 
+            'username', 
+            'profile.country', 
+            'profile.social_media'
+        ))

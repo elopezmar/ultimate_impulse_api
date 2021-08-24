@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from models.irs.ir import IR
     from models.users.user import User
 
+
 class IRReviewList():
     def __init__(self, ir: IR):
         self.ir = ir
@@ -38,16 +39,6 @@ class IRReviewList():
         self.reviews = []
         for item in data:
             self.reviews.append(IRReview(self.ir).from_dict(item))
-        return self
-
-    def set(self, requestor: User) -> IRReviewList:
-        for review in self.reviews:
-            review.set(requestor)
-        return self
-
-    def update(self, requestor: User) -> IRReviewList:
-        for review in self.reviews:
-            review.update(requestor)
         return self
     
     def delete(self, requestor: User, update_ir_stats: bool=True) -> IRReviewList:

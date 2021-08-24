@@ -36,12 +36,15 @@ class Document():
         self.__ref.set(data)
         return self.get()
 
-    def update(self, data: dict) -> dict:
+    def update(self, data: dict, overwrite=False) -> dict:
         try:
-            data.pop('id', None)
-            data = self.__to_dot_notation(data)
-            self.__ref.update(data)
-            return self.get()
+            if overwrite:
+                return self.set(data)
+            else:
+                data.pop('id', None)
+                data = self.__to_dot_notation(data)
+                self.__ref.update(data)
+                return self.get()
         except ValueError:
             raise BusinessError("Resource can't be updated because is empty.", 400)
         except NotFound:

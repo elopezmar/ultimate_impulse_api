@@ -98,7 +98,7 @@ class IRReview():
     def delete(self, requestor: User, update_ir_stats: bool=True) -> IRReview:
         self.get()
 
-        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id not in [self.owner.id, self.ir.owner.id] and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
         if self.ir_id != self.ir.id:
             raise BusinessError("Review doesn't belong to the IR.", 404)

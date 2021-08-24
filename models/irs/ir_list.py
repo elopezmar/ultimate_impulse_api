@@ -20,7 +20,7 @@ class IRList():
     def to_dict(self) -> dict:
         return {'irs': [ir.to_dict() for ir in self.irs]}
 
-    def get(self, filters: list=[]) -> IRList:
+    def get(self, filters: list=None) -> IRList:
         collection = Collection(self.__get_path())
         data = collection.get(filters)
         
