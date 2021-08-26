@@ -5,12 +5,14 @@ from cloud_storage.file import File
 
 class ReviewSection():
     def __init__(self):
+        self.id = None
         self.title = None
         self.description = None
         self.pic_url = None
         self.youtube_links: list[str] = []
 
     def from_dict(self, data: dict) -> ReviewSection:
+        self.id = data.get('id')
         self.title = data.get('title')
         self.description = data.get('description')
         self.pic_url = data.get('pic_url')
@@ -53,3 +55,4 @@ class ReviewSection():
             File(url=self.pic_url).delete()
 
         return self
+    
