@@ -29,11 +29,16 @@ class User():
         self.new_password = None
 
     @property
+    def document_path(self) -> str:
+        return f'users/{self.id}'
+
+    @property
+    def document(self) -> Document:
+        return Document(self.document_path)
+
+    @property
     def is_logged_in(self) -> bool:
         return self.role != None
-
-    def __get_path(self):
-        return f'users/{self.id}'
 
     def from_dict(self, data: dict) -> User:
         self.id = data.get('id', self.id)
@@ -58,8 +63,7 @@ class User():
         return data
 
     def get(self) -> User:
-        document = Document(self.__get_path())
-        return self.from_dict(document.get())
+        return self.from_dict(self.document.get())
 
     def set(self, requestor: User) -> User:
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
@@ -73,8 +77,7 @@ class User():
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
 
-        document = Document(self.__get_path())
-        data = document.set(self.to_dict())
+        data = self.document.set(self.to_dict())
         return self.from_dict(data)
 
     def update(self, requestor: User) -> User:
@@ -106,8 +109,7 @@ class User():
                 public=True
             ).url
 
-        document = Document(self.__get_path())
-        data = document.update(self.to_dict())
+        data = self.document.update(self.to_dict())
         return self.from_dict(data)
 
     def delete(self, requestor: User) -> User:
@@ -115,13 +117,14 @@ class User():
             raise BusinessError("User can't be deleted.", 400)
 
         self.get()
-        Document(self.__get_path()).delete()
+        self.document.delete()
         File(url=self.profile.pic_url).delete()
         return self
 
     def owner_data(self) -> User:
         owner = User(self.id)
         owner.username = self.username
+        owner.profile.pic_url = self.profile.pic_url
         owner.profile.country = self.profile.country
         owner.profile.social_media = self.profile.social_media
         return owner
@@ -138,7 +141,4 @@ class User():
 
     def verify(self):
         self.verified = True
-        document = Document(self.__get_path())
-        document.update(self.to_dict())
-
-
+        self.document.update(self.to_dict())

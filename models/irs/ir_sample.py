@@ -23,7 +23,7 @@ class IRSample():
         self.file_url = None
 
     def __get_path(self) -> str:
-        return f'irs/{self.ir.id}/samples/{self.id}'
+        return f'{self.ir.get_path()}/samples/{self.id}'
 
     def from_dict(self, data: dict) -> IRSample:
         self.id = data.get('id', self.id)

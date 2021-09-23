@@ -28,7 +28,7 @@ class IR():
         self.stats = IRStats()
         self.tags: list[str] = []
 
-    def __get_path(self) -> str:
+    def get_path(self) -> str:
         return f'irs/{self.id}'
 
     def from_dict(self, data: dict) -> IR:
@@ -47,7 +47,7 @@ class IR():
 
         return self
 
-    def to_dict(self, collections=True) -> dict:
+    def to_dict(self, collections: bool=True) -> dict:
         data = {k: v for k, v in self.__dict__.items() if v}
         data.pop('samples', None)
         data.pop('files', None)
@@ -63,7 +63,7 @@ class IR():
         return data
 
     def get(self, requestor: User, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
-        document = Document(self.__get_path())
+        document = Document(self.get_path())
         self.from_dict(document.get())
 
         if samples:
@@ -92,7 +92,7 @@ class IR():
                 public=True
             ).url
 
-        Document(self.__get_path()).set(self.to_dict(collections=False))
+        Document(self.get_path()).set(self.to_dict(collections=False))
 
         self.samples.set(requestor)
         self.files.set(requestor)
@@ -126,7 +126,7 @@ class IR():
         if not self.tags:
             self.tags = current.tags
 
-        Document(self.__get_path()).update(self.to_dict(collections=False))
+        Document(self.get_path()).update(self.to_dict(collections=False))
 
         self.samples.update(requestor)
         self.files.update(requestor)
@@ -146,5 +146,5 @@ class IR():
         for pic_url in self.pics_urls:
             File(url=pic_url).delete()
 
-        Document(self.__get_path()).delete()
+        Document(self.get_path()).delete()
         return self

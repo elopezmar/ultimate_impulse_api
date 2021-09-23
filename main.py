@@ -3,6 +3,7 @@ from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
 from resources.file_blueprint import file_blueprint
+from resources.forum_blueprint import forum_blueprint
 from resources.ir_blueprint import ir_blueprint
 from resources.review_blueprint import review_blueprint
 from resources.user_blueprint import user_blueprint
@@ -15,6 +16,7 @@ CORS(app)
 jwt = JWTManager(app)
 
 app.register_blueprint(file_blueprint)
+app.register_blueprint(forum_blueprint)
 app.register_blueprint(ir_blueprint)
 app.register_blueprint(review_blueprint)
 app.register_blueprint(user_blueprint)
