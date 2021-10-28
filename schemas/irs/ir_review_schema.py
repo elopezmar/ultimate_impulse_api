@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from marshmallow import Schema, fields, validate
 
 from schemas.users.user_schema import UserSchema
@@ -11,7 +9,7 @@ class IRReviewSchema(Schema):
     description = fields.Str()
     rating = fields.Float(required=True, validate=validate.Range(min=0, max=5))
     likes = fields.Integer(dump_only=True)
-    created_at = fields.DateTime(missing=datetime.now())
+    created_at = fields.DateTime(dump_only=True)
     owner = fields.Nested(
         UserSchema(only=(
             'id', 

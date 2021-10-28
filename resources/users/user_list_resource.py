@@ -1,15 +1,13 @@
 from flask_restful import Resource
 
-from models.exceptions import BusinessError
 from models.users.user_list import UserList
 from schemas.users.user_list_schema import UserListSchema
+from resources.utils import handle_errors
 
 
 class UserListResource(Resource):
+    @handle_errors()
     def get(self):
-        try:
-            schema = UserListSchema()
-            users = UserList.get()
-            return schema.dump(users.to_dict()), 200
-        except BusinessError as err:
-            return err.message
+        schema = UserListSchema()
+        users = UserList().get()
+        return schema.dump(users.to_dict('users')), 200

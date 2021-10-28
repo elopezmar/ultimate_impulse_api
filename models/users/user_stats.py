@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-class UserStats():
+from models.model import Model
+
+
+class UserStats(Model):
     def __init__(self):
-        self.topics_created = None
+        super().__init__()
+        self.topics_created = 0
 
-    def from_dict(self, data: dict) -> UserStats:
-        self.topics_created = data.get('topics_created')
-        return self
-
-    def to_dict(self) -> dict:
-        return {k: v for k, v in  self.__dict__.items() if v}
+    @property
+    def remove_from_output(self) -> list:
+        return ['id']

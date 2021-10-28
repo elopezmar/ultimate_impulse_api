@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from firestore.collection import Collection
+from models.model_list import ModelList
 from models.irs.ir_review import IRReview
 
 if TYPE_CHECKING:
@@ -10,39 +10,24 @@ if TYPE_CHECKING:
     from models.users.user import User
 
 
-class IRReviewList():
+class IRReviewList(ModelList):
     def __init__(self, ir: IR):
+        super().__init__()
         self.ir = ir
-        self.reviews: list[IRReview] = []
+        self.items: list[IRReview] = []
 
-    def __get_path(self):
-        return 'ir_user_reviews'
-
-    def from_dict(self, data: dict) -> IRReviewList:
-        self.reviews = []
-        for item in data.get('reviews', []):
-            self.reviews.append(IRReview(self.ir).from_dict(item))
-        return self
-
-    def to_dict(self) -> dict:
-        return {'reviews': [review.to_dict() for review in self.reviews]}
+    @property
+    def item(self) -> IRReview:
+        return IRReview(self.ir)
 
     def get(self, filters: list=None) -> IRReviewList:
-        if not filters:
-            filters = []
-
+        self.retrieved = True
+        filters = filters if filters else []
         filters.append(('ir_id', '==', self.ir.id))
-
-        collection = Collection(self.__get_path())
-        data = collection.get(filters)
-        
-        self.reviews = []
-        for item in data:
-            self.reviews.append(IRReview(self.ir).from_dict(item))
-        return self
+        return self.from_list(self.collection.get(filters))
     
     def delete(self, requestor: User, update_ir_stats: bool=True) -> IRReviewList:
-        for review in self.reviews:
+        for review in self.items:
             review.delete(requestor, update_ir_stats)
         return self
         

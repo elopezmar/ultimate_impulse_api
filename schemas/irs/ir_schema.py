@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from marshmallow import Schema, fields
 
 from schemas.users.user_schema import UserSchema
@@ -12,7 +10,7 @@ class IRSchema(Schema):
     id = fields.Str(required=True)
     title = fields.Str(required=True)
     description = fields.Str()
-    published_at = fields.DateTime(missing=datetime.now())
+    published_at = fields.DateTime(dump_only=True)
     owner = fields.Nested(
         UserSchema(only=(
             'id', 

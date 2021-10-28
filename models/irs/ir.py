@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-import uuid
+from datetime import datetime
 
+from google.api_core.exceptions import NotFound
+
+from algolia.index import Index
 from cloud_storage.file import File
-from firestore.document import Document
+from models.model import Model
 from models.irs.ir_file_list import IRFileList
 from models.irs.ir_sample_list import IRSampleList
 from models.irs.ir_review_list import IRReviewList
@@ -13,75 +16,67 @@ from models.exceptions import BusinessError
 from models.utils import Roles
 
 
-class IR():
+class IR(Model):
     def __init__(self, id: str=None):
-        self.id = id if id else uuid.uuid1().hex
+        super().__init__(id)
         self.title = None
         self.description = None
-        self.published_at = None
+        self.published_at = datetime.now()
         self.owner = User()
         self.pics_urls: list[str] = []
-        self.premium = None
+        self.premium = False
         self.samples = IRSampleList(self)
         self.files = IRFileList(self)
         self.reviews = IRReviewList(self)
         self.stats = IRStats()
         self.tags: list[str] = []
 
-    def get_path(self) -> str:
-        return f'irs/{self.id}'
+    @property
+    def collection_path(self) -> str:
+        return 'irs'
 
-    def from_dict(self, data: dict) -> IR:
-        self.id = data.get('id', self.id)
-        self.title = data.get('title')
-        self.description = data.get('description')
-        self.published_at = data.get('published_at')
-        self.owner.from_dict(data.get('owner', {}))
-        self.pics_urls = data.get('pics_urls', [])
-        self.premium = data.get('premium')
-        self.samples.from_dict(data)
-        self.files.from_dict(data)
-        self.reviews.from_dict(data)
-        self.stats.from_dict(data.get('stats', {}))
-        self.tags = data.get('tags', [])
+    @property
+    def index(self) -> Index:
+        return Index(
+            id=self.id,
+            url=f'/ir?id={self.id}&samples=true&files=true&reviews=true',
+            title=self.title,
+            type='ir',
+            description=self.description
+        )
 
-        return self
+    def update_stats(self, add_reviews: int=0, rating: float=0):
+        if not self.retrieved:
+            self.get()
 
-    def to_dict(self, collections: bool=True) -> dict:
-        data = {k: v for k, v in self.__dict__.items() if v}
-        data.pop('samples', None)
-        data.pop('files', None)
-        data.pop('reviews', None)
-        data['owner'] = self.owner.to_dict()
-        data['stats'] = self.stats.to_dict()
+        self.stats.rating = (
+            ((self.stats.reviews * self.stats.rating) + rating) 
+            / (self.stats.reviews + add_reviews)
+        )
+        self.stats.reviews += add_reviews
+        self.document.update(self.to_dict(collections=False))
 
-        if collections:
-            data.update(self.samples.to_dict())
-            data.update(self.files.to_dict())
-            data.update(self.reviews.to_dict())
+    def get(self, requestor: User=None, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
+        try:
+            self.from_dict(self.document.get())
+            self.retrieved = True
+
+            if samples:
+                self.samples.get()
+            if files and requestor:
+                self.files.get(requestor)
+            if reviews:
+                self.reviews.get()
+
+            return self
+        except NotFound:
+            raise BusinessError('IR not found.', 404)
         
-        return data
-
-    def get(self, requestor: User, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
-        document = Document(self.get_path())
-        self.from_dict(document.get())
-
-        if samples:
-            self.samples.get()
-        if files:
-            self.files.get(requestor)
-        if reviews:
-            self.reviews.get()
-
-        return self
-
     def set(self, requestor: User) -> IR:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError("IR can't be created.", 400)
 
-        self.owner = requestor
-        self.stats.rating = 0
-        self.stats.reviews = 0
+        self.owner = requestor.owner_data()
         
         for idx, pic_url in enumerate(self.pics_urls):
             self.pics_urls[idx] = File(
@@ -92,15 +87,16 @@ class IR():
                 public=True
             ).url
 
-        Document(self.get_path()).set(self.to_dict(collections=False))
-
+        self.document.set(self.to_dict(collections=False))
         self.samples.set(requestor)
         self.files.set(requestor)
+        self.get(requestor, samples=True, files=True)
 
-        return self.get(requestor, samples=True, files=True)
+        self.index.save()
+        return self
 
     def update(self, requestor: User) -> IR:
-        current = IR(self.id).get(requestor)
+        current = IR(self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be updated.", 400)
@@ -126,15 +122,17 @@ class IR():
         if not self.tags:
             self.tags = current.tags
 
-        Document(self.get_path()).update(self.to_dict(collections=False))
-
+        self.document.update(self.to_dict(collections=False))
         self.samples.update(requestor)
         self.files.update(requestor)
+        self.get(requestor, samples=True, files=True)
 
-        return self.get(requestor, samples=True, files=True)
+        self.index.save()
+        return self
 
     def delete(self, requestor: User) -> IR:
-        self.get(requestor)
+        if not self.retrieved:
+            self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be deleted.", 400)
@@ -146,5 +144,6 @@ class IR():
         for pic_url in self.pics_urls:
             File(url=pic_url).delete()
 
-        Document(self.get_path()).delete()
+        self.document.delete()
+        self.index.delete()
         return self

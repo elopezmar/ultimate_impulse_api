@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+from models.model import Model
 
-class ForumStats():
+
+class ForumStats(Model):
     def __init__(self):
+        super().__init__()
         self.topics = 0
         self.replies = 0
 
-    def from_dict(self, data: dict) -> ForumStats:
-        self.topics = data.get('topics', 0)
-        self.replies = data.get('replies', 0)
-
-    def to_dict(self) -> dict:
-        data = {k: v for k, v in self.__dict__.items()}
-        return data
+    @property
+    def remove_from_output(self) -> list:
+        return ['id']

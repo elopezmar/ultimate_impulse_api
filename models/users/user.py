@@ -1,12 +1,14 @@
 from __future__ import annotations
-import uuid
+from datetime import datetime
+
 from typing import Tuple
 
+from google.api_core.exceptions import NotFound
 from flask_jwt_extended import create_access_token
 from werkzeug.security import safe_str_cmp
 
 from cloud_storage.file import File
-from firestore.document import Document
+from models.model import Model
 from models.users.user_profile import UserProfile
 from models.users.user_stats import UserStats
 from models.users.user_list import UserList
@@ -14,14 +16,14 @@ from models.exceptions import BusinessError
 from models.utils import Roles
 
 
-class User():
+class User(Model):
     def __init__(self, id: str=None):
-        self.id = id if id else uuid.uuid1().hex
+        super().__init__(id)
         self.email = None
         self.password = None
         self.username = None
-        self.created_at = None
-        self.verified = None
+        self.created_at = datetime.now()
+        self.verified = False
         self.role = None
         self.profile = UserProfile()
         self.stats = UserStats()
@@ -29,50 +31,33 @@ class User():
         self.new_password = None
 
     @property
-    def document_path(self) -> str:
-        return f'users/{self.id}'
+    def collection_path(self) -> str:
+        return 'users'
 
     @property
-    def document(self) -> Document:
-        return Document(self.document_path)
+    def remove_from_output(self) -> list:
+        return ['old_password', 'new_password']
 
     @property
     def is_logged_in(self) -> bool:
         return self.role != None
 
-    def from_dict(self, data: dict) -> User:
-        self.id = data.get('id', self.id)
-        self.email = data.get('email')
-        self.password = data.get('password')
-        self.username = data.get('username')
-        self.created_at = data.get('created_at')
-        self.verified = data.get('verified')
-        self.role = data.get('role')
-        self.profile.from_dict(data.get('profile', {}))
-        self.stats.from_dict(data.get('stats', {}))
-        self.old_password = data.get('old_password')
-        self.new_password = data.get('new_password')
-        return self
-
-    def to_dict(self) -> dict:
-        data = {k: v for k, v in self.__dict__.items() if v}
-        data['profile'] = self.profile.to_dict()
-        data['stats'] = self.stats.to_dict()
-        data.pop('old_password', None)
-        data.pop('new_password', None)
-        return data
-
     def get(self) -> User:
-        return self.from_dict(self.document.get())
+        try:
+            self.from_dict(self.document.get())
+            self.retrieved = True
+            return self
+        except NotFound:
+            raise BusinessError('User not found.', 404)
 
     def set(self, requestor: User) -> User:
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError(f"Role {self.role} doesn't exists.", 400)
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR] and not requestor.role == Roles.ADMIN:
             raise BusinessError('Only admin users can create admins or collaborators.', 400)
-        if UserList.get([('email', '==', self.email)]).users:
+        if UserList().get([('email', '==', self.email)]).items:
             raise BusinessError('Email already exists.', 400)
-        if UserList.get([('username', '==', self.username)]).users:
+        if UserList().get([('username', '==', self.username)]).items:
             raise BusinessError('Username already exists.', 400)
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
@@ -89,7 +74,7 @@ class User():
             raise BusinessError("User can't be updated.", 400)
 
         if self.username and self.username != current.username:
-            if UserList.get([('username', '==', self.username)]).users:
+            if UserList().get([('username', '==', self.username)]).items:
                 raise BusinessError('Username already exists.', 400)
         
         if self.old_password and self.new_password:
@@ -116,21 +101,31 @@ class User():
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
             raise BusinessError("User can't be deleted.", 400)
 
-        self.get()
+        if not self.retrieved:
+            self.get()
+
         self.document.delete()
         File(url=self.profile.pic_url).delete()
         return self
 
     def owner_data(self) -> User:
         owner = User(self.id)
+        owner.email = None
+        owner.password = None
         owner.username = self.username
+        owner.created_at = None
+        owner.verified = None
+        owner.role = None
         owner.profile.pic_url = self.profile.pic_url
         owner.profile.country = self.profile.country
         owner.profile.social_media = self.profile.social_media
+        owner.stats = None
+        owner.old_password = None
+        owner.new_password = None
         return owner
 
     def login(self) -> Tuple[str, User]:
-        for user in UserList.get([('email', '==', self.email)]).users:
+        for user in UserList().get([('email', '==', self.email)]).items:
             if not user.verified:
                 raise BusinessError('Invalid email or password.', 400)
             if not safe_str_cmp(user.password, self.password):
@@ -140,5 +135,8 @@ class User():
         raise BusinessError('User not found.', 404)
 
     def verify(self):
+        if not self.retrieved:
+            self.get()
+
         self.verified = True
         self.document.update(self.to_dict())

@@ -14,4 +14,4 @@ class ForumReplyListResource(Resource):
         forum = Forum(forum_id)
         topic = ForumTopic(forum, topic_id)
         replies = ForumReplyList(topic).get()
-        return schema.dump(replies.to_dict()), 200
+        return schema.dump(replies.to_dict('replies')), 200

@@ -12,4 +12,4 @@ class ForumTopicListResource(Resource):
         schema = ForumTopicListSchema()
         forum = Forum(forum_id)
         topics = ForumTopicList(forum).get()
-        return schema.dump(topics.to_dict()), 200
+        return schema.dump(topics.to_dict('topics')), 200

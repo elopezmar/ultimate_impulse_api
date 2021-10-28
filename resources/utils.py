@@ -11,6 +11,8 @@ def get_requestor() -> User:
         user = User(id=get_jwt_identity()).get()
     except RuntimeError:
         user = User()
+    except BusinessError:
+        user = User()
     return user
 
 def handle_errors():
@@ -20,7 +22,7 @@ def handle_errors():
             try:
                 return func(*args, **kwargs)
             except ValidationError as err:
-                return err.messages
+                return err.messages, 400
             except BusinessError as err:
                 return err.message
             except KeyError as err:

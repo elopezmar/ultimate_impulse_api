@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from marshmallow import Schema, fields
 
 from models.utils import Roles
@@ -12,7 +10,7 @@ class UserSchema(Schema):
     email = fields.Email(required=True)
     password = fields.Str(required=True, load_only=True)
     username = fields.Str(required=True)
-    created_at = fields.DateTime(missing=datetime.now())
+    created_at = fields.DateTime(dump_only=True)
     verified = fields.Boolean(dump_only=True)
     role = fields.Str(missing=Roles.USER)
     profile = fields.Nested(Schema.from_dict(dict(

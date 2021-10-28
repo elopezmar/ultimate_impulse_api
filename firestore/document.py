@@ -3,8 +3,6 @@ from google.cloud.firestore_v1.base_document import DocumentSnapshot
 
 from firestore.client import client
 
-from models.exceptions import BusinessError
-
 
 class Document():
     def __init__(self, path: str):
@@ -15,7 +13,7 @@ class Document():
     def __to_dict(data: DocumentSnapshot) -> dict:
         if data.exists:
             return {'id': data.id, **data.to_dict()}
-        return {}
+        raise NotFound('Resource not found.')
 
     @classmethod
     def __to_dot_notation(cls, data: dict, prefix=None) -> dict:
@@ -37,19 +35,13 @@ class Document():
         return self.get()
 
     def update(self, data: dict, overwrite=False) -> dict:
-        try:
-            if overwrite:
-                return self.set(data)
-            else:
-                data.pop('id', None)
-                data = self.__to_dot_notation(data)
-                self.__ref.update(data)
-                return self.get()
-        except ValueError:
-            raise BusinessError("Resource can't be updated because is empty.", 400)
-        except NotFound:
-            raise BusinessError("Resource not found.", 400)
-        
-
+        if overwrite:
+            return self.set(data)
+        else:
+            data.pop('id', None)
+            data = self.__to_dot_notation(data)
+            self.__ref.update(data)
+            return self.get()
+                
     def delete(self):
         self.__ref.delete()

@@ -10,4 +10,4 @@ class ForumListResource(Resource):
     def get(self):
         schema = ForumListSchema()
         forums = ForumList().get()
-        return schema.dump(forums.to_dict()), 200
+        return schema.dump(forums.to_dict('forums')), 200

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-import uuid
+from datetime import datetime
 
+from google.api_core.exceptions import NotFound
+
+from algolia.index import Index
 from cloud_storage.file import File
-from firestore.document import Document
+from models.model import Model
 from models.reviews.review_comment_list import ReviewCommentList
 from models.reviews.review_content import ReviewContent
 from models.users.user import User
@@ -11,62 +14,49 @@ from models.exceptions import BusinessError
 from models.utils import Roles
     
 
-class Review():
+class Review(Model):
     def __init__(self, id: str=None):
-        self.id = id if id else uuid.uuid1().hex
+        super().__init__(id)
         self.title = None
         self.description = None
-        self.published_at = None
+        self.published_at = datetime.now()
         self.pic_url = None
         self.owner = User()
         self.content = ReviewContent(self)
         self.comments = ReviewCommentList(self)
         self.tags: list[str] = []
 
-    def __get_path(self) -> str:
-        return f'reviews/{self.id}'
+    @property
+    def collection_path(self) -> str:
+        return 'reviews'
 
-    def from_dict(self, data: dict) -> Review:
-        self.id = data.get('id', self.id)
-        self.title = data.get('title')
-        self.description = data.get('description')
-        self.published_at = data.get('published_at')
-        self.pic_url = data.get('pic_url')
-        self.owner.from_dict(data.get('owner', {}))
-        self.content.from_dict(data)
-        self.comments.from_dict(data)
-        self.tags = data.get('tags', [])
-
-        return self
-
-    def to_dict(self, collections=True) -> dict:
-        data = {k: v for k, v in self.__dict__.items() if v}
-        data.pop('content')
-        data.pop('comments')
-        data['owner'] = self.owner.to_dict()
-
-        if collections:
-            data.update(self.content.to_dict())
-            data.update(self.comments.to_dict())
-
-        return data
+    @property
+    def index(self) -> Index:
+        return Index(
+            id=self.id,
+            url=f'/review?id={self.id}&content=true&comments=true',
+            title=self.title,
+            type='review',
+            description=self.description
+        )
 
     def get(self, content: bool=False, comments: bool=False) -> Review:
-        document = Document(self.__get_path())
-        self.from_dict(document.get())
+        try:
+            self.from_dict(self.document.get())
+            self.retrieved = True
 
-        if content:
-            self.content.get()
-        if comments:
-            self.comments.get()
-    
-        return self
-
+            if content:
+                self.content.get()
+            if comments:
+                self.comments.get()
+        
+            return self
+        except NotFound:
+            raise BusinessError('Review not found.', 404)
+        
     def set(self, requestor: User) -> Review:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError("Review can't be created.", 400)
-
-        self.owner = requestor.owner_data()
 
         if self.pic_url:
             self.pic_url = File(
@@ -77,11 +67,13 @@ class Review():
                 public=True
             ).url
 
-        Document(self.__get_path()).set(self.to_dict(collections=False))
-
+        self.owner = requestor.owner_data()
+        self.document.set(self.to_dict(collections=False))
         self.content.set(requestor)
+        self.get(content=True)
 
-        return self.get(content=True)
+        self.index.save()
+        return self
 
 
     def update(self, requestor: User) -> Review:
@@ -100,16 +92,16 @@ class Review():
                 public=True
             ).url
 
-        self.published_at = current.published_at
-
-        Document(self.__get_path()).update(self.to_dict(collections=False))
-
+        self.document.update(self.to_dict(collections=False))
         self.content.update(requestor)
+        self.get(content=True)
 
-        return self.get(content=True)
+        self.index.save()
+        return self
 
     def delete(self, requestor: User) -> Review:
-        self.get()
+        if not self.retrieved:
+            self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
@@ -120,5 +112,6 @@ class Review():
         if self.pic_url:
             File(url=self.pic_url).delete()
 
-        Document(self.__get_path()).delete()
+        self.document.delete()
+        self.index.delete()
         return self

@@ -1,27 +1,17 @@
 from __future__ import annotations
 
 from cloud_storage.file import File
+from models.model import Model
 
 
-class ReviewSection():
+class ReviewSection(Model):
     def __init__(self):
+        super().__init__()
         self.id = None
         self.title = None
         self.description = None
         self.pic_url = None
         self.youtube_links: list[str] = []
-
-    def from_dict(self, data: dict) -> ReviewSection:
-        self.id = data.get('id')
-        self.title = data.get('title')
-        self.description = data.get('description')
-        self.pic_url = data.get('pic_url')
-        self.youtube_links = data.get('youtube_links', [])
-        return self
-
-    def to_dict(self) -> dict:
-        data = {k: v for k, v in self.__dict__.items() if v}
-        return data
 
     def set(self) -> ReviewSection:
         if self.pic_url:

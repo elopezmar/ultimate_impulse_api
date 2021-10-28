@@ -8,21 +8,24 @@ from resources.utils import get_requestor, handle_errors
 
 
 class ForumTopicResource(Resource):
+    def topic(self, forum_id: str, topic_id: str=None) -> ForumTopic:
+        forum = Forum(forum_id).get()
+        topic = ForumTopic(forum, topic_id)
+        return topic
+
     @jwt_required()
     @handle_errors()
     def post(self, forum_id: str):
         schema = ForumTopicSchema(partial=('id',))
         data = schema.load(request.get_json())
-        forum = Forum(forum_id).get()
-        topic = ForumTopic(forum).from_dict(data)
+        topic = self.topic(forum_id).from_dict(data)
         topic.set(get_requestor())
         return schema.dump(topic.to_dict()), 201
 
     @handle_errors()
     def get(self, forum_id: str):
         schema = ForumTopicSchema()
-        forum = Forum(forum_id)
-        topic = ForumTopic(forum, request.args['id']).get(
+        topic = self.topic(forum_id, request.args['id']).get(
             replies=request.args.get('replies', '').lower() == 'true'
         )
         return schema.dump(topic.to_dict()), 200
@@ -32,8 +35,7 @@ class ForumTopicResource(Resource):
     def put(self, forum_id: str):
         schema = ForumTopicSchema(partial=('title', 'description'))
         data = schema.load(request.get_json())
-        forum = Forum(forum_id)
-        topic = ForumTopic(forum).from_dict(data)
+        topic = self.topic(forum_id).from_dict(data)
         topic.update(get_requestor())
         return {'message': 'Topic updated.'}, 200
 
@@ -45,7 +47,6 @@ class ForumTopicResource(Resource):
             only=('id',)
         )
         data = schema.load(request.get_json())
-        forum = Forum(forum_id)
-        topic = ForumTopic(forum).from_dict(data)
+        topic = self.topic(forum_id).from_dict(data)
         topic.delete(get_requestor())
         return {'message': 'Topic deleted.'}, 200
