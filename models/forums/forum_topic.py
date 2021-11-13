@@ -9,24 +9,25 @@ from algolia.index import Index
 from models.model import Model
 from models.forums.forum_reply_list import ForumReplyList
 from models.forums.forum_topic_stats import ForumTopicStats
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
 
 if TYPE_CHECKING:
+    from models.users.user import User
     from models.forums.forum import Forum
 
 
 class ForumTopic(Model):
     def __init__(self, forum: Forum, id: str=None):
         super().__init__(id)
-        self.forum = forum
-        self.title = None
-        self.description = None
-        self.published_at = datetime.now()
-        self.owner = User()
-        self.stats = ForumTopicStats()
-        self.replies = ForumReplyList(self)
+        self.forum: Forum = forum
+        self.title: str = None
+        self.description: str = None
+        self.published_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
+        self.stats: ForumTopicStats = ForumTopicStats()
+        self.replies: ForumReplyList = ForumReplyList(self)
 
     @property
     def collection_path(self) -> str:
@@ -71,7 +72,7 @@ class ForumTopic(Model):
         if not requestor.is_logged_in:
             return BusinessError("Topic can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         data = self.document.set(self.to_dict(collections=False))
         self.forum.update_stats(add_topics=1)
         self.from_dict(data)

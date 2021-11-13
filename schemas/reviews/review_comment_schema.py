@@ -1,10 +1,11 @@
 from marshmallow import Schema, fields
 
-from schemas.users.user_schema import UserSchema
+from schemas.owners.owner_schema import OwnerSchema
+
 
 class ReviewCommentSchema(Schema):
     id = fields.Str(required=True)
     description = fields.Str(required=True)
     created_at = fields.DateTime(dump_only=True)
-    owner = fields.Nested(UserSchema.owner_data(), dump_only=True)
+    owner = fields.Nested(OwnerSchema(), dump_only=True)
     

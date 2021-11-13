@@ -2,9 +2,13 @@ import functools
 
 from marshmallow.exceptions import ValidationError
 from flask_jwt_extended import get_jwt_identity
+from flask_restful import request
 
 from models.users.user import User
 from models.exceptions import BusinessError
+
+def get_bool_arg(name: str) -> bool:
+    return request.args.get(name, '').lower() == 'true'
 
 def get_requestor() -> User:
     try:

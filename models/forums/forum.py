@@ -1,26 +1,29 @@
 from __future__ import annotations
-
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from google.api_core.exceptions import NotFound
 
 from models.model import Model
 from models.forums.forum_stats import ForumStats
 from models.forums.forum_topic_list import ForumTopicList
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+
+if TYPE_CHECKING:
+    from models.users.user import User
 
 
 class Forum(Model):
     def __init__(self, id: str=None):
         super().__init__(id)
-        self.title = None
-        self.description = None
-        self.published_at = datetime.now()
-        self.owner = User()
-        self.stats = ForumStats()
-        self.topics = ForumTopicList(self)
+        self.title: str = None
+        self.description: str = None
+        self.published_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
+        self.stats: ForumStats = ForumStats()
+        self.topics: ForumTopicList = ForumTopicList(self)
 
     @property
     def collection_path(self) -> str:
@@ -51,7 +54,7 @@ class Forum(Model):
         if requestor.role != Roles.ADMIN:
             return BusinessError("Forum can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         data = self.document.set(self.to_dict(collections=False))
         return self.from_dict(data)
 

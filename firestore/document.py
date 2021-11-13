@@ -6,8 +6,8 @@ from firestore.client import client
 
 class Document():
     def __init__(self, path: str):
-        self.__client = client
-        self.__ref = self.__client.document(path)
+        self.client = client
+        self.ref = self.client.document(path)
 
     @staticmethod
     def __to_dict(data: DocumentSnapshot) -> dict:
@@ -27,11 +27,11 @@ class Document():
         return doted
 
     def get(self) -> dict:
-        return self.__to_dict(self.__ref.get())
+        return self.__to_dict(self.ref.get())
 
     def set(self, data: dict) -> dict:
         data.pop('id', None)
-        self.__ref.set(data)
+        self.ref.set(data)
         return self.get()
 
     def update(self, data: dict, overwrite=False) -> dict:
@@ -40,8 +40,8 @@ class Document():
         else:
             data.pop('id', None)
             data = self.__to_dot_notation(data)
-            self.__ref.update(data)
+            self.ref.update(data)
             return self.get()
                 
     def delete(self):
-        self.__ref.delete()
+        self.ref.delete()

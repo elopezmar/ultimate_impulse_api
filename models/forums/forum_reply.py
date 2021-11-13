@@ -7,22 +7,23 @@ from typing import TYPE_CHECKING
 from google.api_core.exceptions import NotFound
 
 from models.model import Model
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
 
 if TYPE_CHECKING:
     from models.forums.forum_topic import ForumTopic
+    from models.users.user import User
 
 
 class ForumReply(Model):
     def __init__(self, topic: ForumTopic, id: str=None):
         super().__init__(id)
-        self.topic = topic
-        self.title = None
-        self.description = None
-        self.published_at = datetime.now()
-        self.owner = User()
+        self.topic: ForumTopic = topic
+        self.title: str = None
+        self.description: str = None
+        self.published_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
 
     @property
     def collection_path(self) -> str:
@@ -44,7 +45,7 @@ class ForumReply(Model):
         if not requestor.is_logged_in:
             return BusinessError("Reply can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         data = self.document.set(self.to_dict())
         self.topic.update_stats(add_replies=1)
         return self.from_dict(data)

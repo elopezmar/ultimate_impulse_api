@@ -1,9 +1,9 @@
 from marshmallow import Schema, fields
 
-from schemas.users.user_schema import UserSchema
 from schemas.irs.ir_file_schema import IRFileSchema
 from schemas.irs.ir_review_schema import IRReviewSchema
 from schemas.irs.ir_sample_schema import IRSampleSchema
+from schemas.owners.owner_schema import OwnerSchema
 
 
 class IRSchema(Schema):
@@ -11,14 +11,7 @@ class IRSchema(Schema):
     title = fields.Str(required=True)
     description = fields.Str()
     published_at = fields.DateTime(dump_only=True)
-    owner = fields.Nested(
-        UserSchema(only=(
-            'id', 
-            'username', 
-            'profile.country', 
-            'profile.social_media'
-        )), dump_only=True
-    )
+    owner = fields.Nested(OwnerSchema(), dump_only=True)
     pics_urls = fields.List(fields.Url())
     premium = fields.Boolean(missing=False)
     samples = fields.List(fields.Nested(IRSampleSchema()))

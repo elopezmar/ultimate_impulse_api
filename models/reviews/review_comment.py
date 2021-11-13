@@ -1,28 +1,27 @@
 from __future__ import annotations
-
-import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 from google.api_core.exceptions import NotFound
 
 from models.model import Model
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
 
 if TYPE_CHECKING:
     from models.reviews.review import Review
+    from models.users.user import User
 
 
 class ReviewComment(Model):
     def __init__(self, review: Review, id: str=None):
         super().__init__(id)
-        self.review = review
-        self.review_id = review.id
-        self.description = None
-        self.created_at = datetime.now()
-        self.owner = User()
+        self.review: Review = review
+        self.review_id: str = review.id
+        self.description: str = None
+        self.created_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
 
     @property
     def collection_path(self) -> str:
@@ -44,7 +43,7 @@ class ReviewComment(Model):
         if not requestor.is_logged_in:
             raise BusinessError("Comment can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         data = self.document.set(self.to_dict())
         return self.from_dict(data)
 

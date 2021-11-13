@@ -19,16 +19,16 @@ from models.utils import Roles
 class User(Model):
     def __init__(self, id: str=None):
         super().__init__(id)
-        self.email = None
-        self.password = None
-        self.username = None
-        self.created_at = datetime.now()
-        self.verified = False
-        self.role = None
-        self.profile = UserProfile()
-        self.stats = UserStats()
-        self.old_password = None
-        self.new_password = None
+        self.email: str = None
+        self.password: str = None
+        self.username: str = None
+        self.created_at: datetime = datetime.now()
+        self.verified: bool = False
+        self.role: str = None
+        self.profile: UserProfile = UserProfile()
+        self.stats: UserStats = UserStats()
+        self.old_password: str = None
+        self.new_password: str = None
 
     @property
     def collection_path(self) -> str:
@@ -42,10 +42,14 @@ class User(Model):
     def is_logged_in(self) -> bool:
         return self.role != None
 
-    def get(self) -> User:
+    def get(self, purchases: bool=False) -> User:
         try:
             self.from_dict(self.document.get())
             self.retrieved = True
+
+            if purchases:
+                self.purchases.get()
+
             return self
         except NotFound:
             raise BusinessError('User not found.', 404)
@@ -62,7 +66,7 @@ class User(Model):
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
 
-        data = self.document.set(self.to_dict())
+        data = self.document.set(self.to_dict(collections=False))
         return self.from_dict(data)
 
     def update(self, requestor: User) -> User:
@@ -94,7 +98,7 @@ class User(Model):
                 public=True
             ).url
 
-        data = self.document.update(self.to_dict())
+        data = self.document.update(self.to_dict(collections=False))
         return self.from_dict(data)
 
     def delete(self, requestor: User) -> User:
@@ -104,25 +108,10 @@ class User(Model):
         if not self.retrieved:
             self.get()
 
+        self.purchases.delete(requestor)
         self.document.delete()
         File(url=self.profile.pic_url).delete()
         return self
-
-    def owner_data(self) -> User:
-        owner = User(self.id)
-        owner.email = None
-        owner.password = None
-        owner.username = self.username
-        owner.created_at = None
-        owner.verified = None
-        owner.role = None
-        owner.profile.pic_url = self.profile.pic_url
-        owner.profile.country = self.profile.country
-        owner.profile.social_media = self.profile.social_media
-        owner.stats = None
-        owner.old_password = None
-        owner.new_password = None
-        return owner
 
     def login(self) -> Tuple[str, User]:
         for user in UserList().get([('email', '==', self.email)]).items:
@@ -139,4 +128,4 @@ class User(Model):
             self.get()
 
         self.verified = True
-        self.document.update(self.to_dict())
+        self.document.update(self.to_dict(collections=False))

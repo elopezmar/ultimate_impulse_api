@@ -6,25 +6,26 @@ from typing import TYPE_CHECKING
 from google.api_core.exceptions import NotFound
 
 from models.model import Model
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
+    from models.users.user import User
 
 
 class IRReview(Model):
     def __init__(self, ir: IR, id: str=None):
         super().__init__(id)
-        self.ir = ir
-        self.ir_id = ir.id
-        self.title = None
-        self.description = None
-        self.rating = 0
-        self.likes = 0
-        self.created_at = datetime.now()
-        self.owner = User()
+        self.ir: IR = ir
+        self.ir_id: str = ir.id
+        self.title: str = None
+        self.description: str = None
+        self.rating: float = 0
+        self.likes: int = 0
+        self.created_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
 
     @property
     def collection_path(self) -> str:
@@ -50,7 +51,7 @@ class IRReview(Model):
         if not requestor.is_logged_in:
             raise BusinessError("Review can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         data = self.document.set(self.to_dict())
         self.ir.update_stats(add_reviews=1, rating=self.rating)
 

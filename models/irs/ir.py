@@ -1,6 +1,6 @@
 from __future__ import annotations
-
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from google.api_core.exceptions import NotFound
 
@@ -11,24 +11,29 @@ from models.irs.ir_file_list import IRFileList
 from models.irs.ir_sample_list import IRSampleList
 from models.irs.ir_review_list import IRReviewList
 from models.irs.ir_stats import IRStats
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+
+if TYPE_CHECKING:
+    from models.users.user import User
 
 
 class IR(Model):
     def __init__(self, id: str=None):
         super().__init__(id)
-        self.title = None
-        self.description = None
-        self.published_at = datetime.now()
-        self.owner = User()
+        self.title: str = None
+        self.description: str = None
+        self.published_at: datetime = datetime.now()
+        self.owner: Owner = Owner()
         self.pics_urls: list[str] = []
-        self.premium = False
-        self.samples = IRSampleList(self)
-        self.files = IRFileList(self)
-        self.reviews = IRReviewList(self)
-        self.stats = IRStats()
+        self.premium: bool = False
+        self.price: float = None
+        self.discount: float = None #Percent
+        self.samples: IRSampleList = IRSampleList(self)
+        self.files: IRFileList = IRFileList(self)
+        self.reviews: IRReviewList = IRReviewList(self)
+        self.stats: IRStats = IRStats()
         self.tags: list[str] = []
 
     @property
@@ -76,7 +81,7 @@ class IR(Model):
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError("IR can't be created.", 400)
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         
         for idx, pic_url in enumerate(self.pics_urls):
             self.pics_urls[idx] = File(

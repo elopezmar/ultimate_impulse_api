@@ -1,6 +1,6 @@
 from __future__ import annotations
-
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from google.api_core.exceptions import NotFound
 
@@ -9,21 +9,24 @@ from cloud_storage.file import File
 from models.model import Model
 from models.reviews.review_comment_list import ReviewCommentList
 from models.reviews.review_content import ReviewContent
-from models.users.user import User
+from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+
+if TYPE_CHECKING:
+    from models.users.user import User
     
 
 class Review(Model):
     def __init__(self, id: str=None):
         super().__init__(id)
-        self.title = None
-        self.description = None
-        self.published_at = datetime.now()
-        self.pic_url = None
-        self.owner = User()
-        self.content = ReviewContent(self)
-        self.comments = ReviewCommentList(self)
+        self.title: str = None
+        self.description: str = None
+        self.published_at: datetime = datetime.now()
+        self.pic_url: str = None
+        self.owner: Owner = Owner()
+        self.content: ReviewContent = ReviewContent(self)
+        self.comments: ReviewCommentList = ReviewCommentList(self)
         self.tags: list[str] = []
 
     @property
@@ -67,7 +70,7 @@ class Review(Model):
                 public=True
             ).url
 
-        self.owner = requestor.owner_data()
+        self.owner.from_user(requestor)
         self.document.set(self.to_dict(collections=False))
         self.content.set(requestor)
         self.get(content=True)
