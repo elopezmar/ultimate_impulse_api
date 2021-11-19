@@ -9,3 +9,4 @@ class PurchaseSchema(Schema):
     ir = fields.Nested(IRSchema(only=('id', 'title', 'description')))
     owner = fields.Nested(OwnerSchema(), dump_only=True)
     purchased_at = fields.DateTime(dump_only=True)
+    total = fields.Float(dump_only=True)

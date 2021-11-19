@@ -8,7 +8,7 @@ from resources.utils import get_requestor, handle_errors
 
 
 class PurchaseResource(Resource):
-    @jwt_required(optional=True)
+    @jwt_required()
     @handle_errors()
     def post(self):
         schema = PurchaseSchema(partial=('id', 'ir.title',))

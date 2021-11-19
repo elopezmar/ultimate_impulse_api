@@ -2,6 +2,7 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 
+from resources.donation_blueprint import donation_blueprint
 from resources.file_blueprint import file_blueprint
 from resources.forum_blueprint import forum_blueprint
 from resources.ir_blueprint import ir_blueprint
@@ -16,6 +17,7 @@ app.config['JWT_SECRET_KEY'] = '123456'
 CORS(app)
 jwt = JWTManager(app)
 
+app.register_blueprint(donation_blueprint)
 app.register_blueprint(file_blueprint)
 app.register_blueprint(forum_blueprint)
 app.register_blueprint(ir_blueprint)

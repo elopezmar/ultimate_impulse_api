@@ -4,20 +4,26 @@ from google.cloud.firestore_v1.base_document import DocumentSnapshot
 from google.cloud.firestore_v1.collection import CollectionReference
 from google.cloud.firestore_v1.query import Query
 
+from firestore.cache import cache
 from firestore.client import client
 
 
 class Collection():
     def __init__(self, path: str):
-        self.__client = client
-        self.__path = path
+        self.path = path
 
-    @staticmethod
-    def __to_list(data: Generator[DocumentSnapshot, Any, None]) -> List[dict]:
-        return [{'id': item.id, **item.to_dict()} for item in data]
+    @property
+    def ref(self) -> CollectionReference:
+        return client.collection(self.path)
 
-    def __get_ref(self) -> CollectionReference:
-        return self.__client.collection(self.__path)
+    def to_dict(self, item: DocumentSnapshot) -> dict:
+        return cache.set(
+            key=f'{self.path}/{item.id}',
+            data={'id': item.id, **item.to_dict()}
+        )
+
+    def to_list(self, data: Generator[DocumentSnapshot, Any, None]) -> List[dict]:
+        return [self.to_dict(item) for item in data]
 
     def get(self, filters: List[tuple]=None, order_by: List[tuple]=None, limit: int=None) -> List[dict]:
         '''
@@ -25,7 +31,7 @@ class Collection():
         order_by => [(order_field, direction: asc | desc )], if there is not direction provided sorting must be ascending
         '''
 
-        ref = self.__get_ref()
+        ref = self.ref
 
         if filters:
             for item in filters:
@@ -43,7 +49,4 @@ class Collection():
         if limit:
             ref = ref.limit(limit)
 
-        return self.__to_list(ref.stream())
-
-        
-
+        return self.to_list(ref.stream())

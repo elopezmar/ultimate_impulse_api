@@ -1,5 +1,6 @@
 import functools
 
+from google.api_core.exceptions import NotFound
 from marshmallow.exceptions import ValidationError
 from flask_jwt_extended import get_jwt_identity
 from flask_restful import request
@@ -29,6 +30,8 @@ def handle_errors():
                 return err.messages, 400
             except BusinessError as err:
                 return err.message
+            except NotFound as err:
+                return err.message, 404
             except KeyError as err:
                 return {'message': 'An id must be provided as parameter.'}, 400
         return wrapper

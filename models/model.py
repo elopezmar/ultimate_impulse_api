@@ -33,6 +33,10 @@ class Model():
         return Document(self.document_path)
 
     @property
+    def entity_name(self) -> str:
+        return 'Model'
+
+    @property
     def remove_from_input(self) -> list:
         return []
 
@@ -58,10 +62,6 @@ class Model():
 
                 if not is_model and not is_modellist:
                     setattr(self, prop, data.get(prop, val))
-                    # if prop == 'id':
-                    #     setattr(self, prop, data.get(prop, val))
-                    # else:
-                    #     setattr(self, prop, data.get(prop))
                 elif is_modellist:
                     val.from_list(data.get(prop, []))
                 elif is_model:

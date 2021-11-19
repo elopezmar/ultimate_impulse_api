@@ -19,6 +19,7 @@ class Purchase(Model):
         self.ir: IR = ir or IR()
         self.owner: Owner = owner or Owner()
         self.purchased_at: datetime = datetime.now()
+        self.total: float = None
 
     @property
     def collection_path(self) -> str:
@@ -33,6 +34,7 @@ class Purchase(Model):
         
         self.ir.get()
         self.owner.from_user(requestor)
+        self.total = self.ir.total
         data = self.document.set(self.to_dict())
         return self.from_dict(data)
 

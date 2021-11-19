@@ -35,6 +35,10 @@ class User(Model):
         return 'users'
 
     @property
+    def entity_name(self) -> str:
+        return 'User'
+        
+    @property
     def remove_from_output(self) -> list:
         return ['old_password', 'new_password']
 
@@ -42,14 +46,10 @@ class User(Model):
     def is_logged_in(self) -> bool:
         return self.role != None
 
-    def get(self, purchases: bool=False) -> User:
+    def get(self) -> User:
         try:
             self.from_dict(self.document.get())
             self.retrieved = True
-
-            if purchases:
-                self.purchases.get()
-
             return self
         except NotFound:
             raise BusinessError('User not found.', 404)
@@ -108,7 +108,6 @@ class User(Model):
         if not self.retrieved:
             self.get()
 
-        self.purchases.delete(requestor)
         self.document.delete()
         File(url=self.profile.pic_url).delete()
         return self
@@ -120,7 +119,6 @@ class User(Model):
             if not safe_str_cmp(user.password, self.password):
                 raise BusinessError('User not verified.', 400)
             return create_access_token(user.id), user
-        
         raise BusinessError('User not found.', 404)
 
     def verify(self):

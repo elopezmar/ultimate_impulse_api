@@ -24,12 +24,13 @@ class IR(Model):
         super().__init__(id)
         self.title: str = None
         self.description: str = None
-        self.published_at: datetime = datetime.now()
+        self.published_at: datetime = None
         self.owner: Owner = Owner()
         self.pics_urls: list[str] = []
-        self.premium: bool = False
+        self.premium: bool = None
         self.price: float = None
-        self.discount: float = None #Percent
+        self.discount: float = None
+        self.total: float = None
         self.samples: IRSampleList = IRSampleList(self)
         self.files: IRFileList = IRFileList(self)
         self.reviews: IRReviewList = IRReviewList(self)
@@ -49,6 +50,11 @@ class IR(Model):
             type='ir',
             description=self.description
         )
+
+    def calculate_price(self):
+        self.price = self.price if self.price != None else 0
+        self.discount = self.discount if self.discount != None else 0
+        self.total = self.price - (self.price * (self.discount/100))
 
     def update_stats(self, add_reviews: int=0, rating: float=0):
         if not self.retrieved:
@@ -82,6 +88,10 @@ class IR(Model):
             raise BusinessError("IR can't be created.", 400)
 
         self.owner.from_user(requestor)
+        self.published_at = datetime.now()
+
+        if self.premium == None:
+            self.premium = False
         
         for idx, pic_url in enumerate(self.pics_urls):
             self.pics_urls[idx] = File(
@@ -92,6 +102,7 @@ class IR(Model):
                 public=True
             ).url
 
+        self.calculate_price()
         self.document.set(self.to_dict(collections=False))
         self.samples.set(requestor)
         self.files.set(requestor)
@@ -106,9 +117,6 @@ class IR(Model):
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be updated.", 400)
 
-        if self.premium == None:
-            self.premium = current.premium
-
         for idx, pic_url in enumerate(self.pics_urls):
             pic_file = File(url=pic_url)
 
@@ -121,12 +129,25 @@ class IR(Model):
                     public=True
                 ).url
 
-        if not self.pics_urls:
+        if self.premium == None:
+            self.premium = current.premium
+
+        if self.price == None:
+            self.price = current.price
+
+        if self.discount == None:
+            self.discount = current.discount
+
+        if self.total == None:
+            self.total = current.total
+
+        if self.pics_urls == None:
             self.pics_urls = current.pics_urls
 
-        if not self.tags:
+        if self.tags == None:
             self.tags = current.tags
 
+        self.calculate_price()
         self.document.update(self.to_dict(collections=False))
         self.samples.update(requestor)
         self.files.update(requestor)
