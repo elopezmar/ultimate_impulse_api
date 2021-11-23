@@ -5,8 +5,8 @@ class ReviewTagListResource(Resource):
     def get(self):
         return {
             'tags': [
-                'news',
-                'music_production',
-                'review'
+                'NEWS',
+                'MUSIC PRODUCTION',
+                'REVIEW'
             ]
         }, 200

@@ -1,9 +1,8 @@
-from flask_jwt_extended import jwt_required
-from flask_restful import Resource, request
+from flask_restful import Resource
 
 from models.donations.donation_list import DonationList
 from schemas.donations.donation import DonationSchema
-from resources.utils import get_requestor, handle_errors
+from resources.utils import handle_errors
 
 
 class DonationListResource(Resource):
