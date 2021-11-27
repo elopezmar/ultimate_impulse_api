@@ -1,11 +1,8 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from models.model import Model
 from models.owners.owner_profile import OwnerProfile
-from models.exceptions import BusinessError
 
 if TYPE_CHECKING:
     from models.users.user import User
@@ -21,11 +18,9 @@ class Owner(Model):
     def collection_path(self) -> str:
         return 'users'
 
+    @property
+    def entity_name(self) -> str:
+        return 'User'
+
     def from_user(self, user: User) -> Owner:
         return self.from_dict(user.to_dict())
-
-    def get(self) -> Owner:
-        try:
-            return self.from_dict(self.document.get())
-        except NotFound:
-            raise BusinessError('User not found.', 404)

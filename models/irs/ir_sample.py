@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from cloud_storage.file import File
 from models.model import Model
 from models.exceptions import BusinessError
@@ -27,6 +25,10 @@ class IRSample(Model):
         return f'{self.ir.document_path}/samples'
 
     @property
+    def entity_name(self) -> str:
+        return 'IR sample'
+
+    @property
     def remove_from_input(self) -> list:
         return ['ir']
 
@@ -34,14 +36,6 @@ class IRSample(Model):
     def remove_from_output(self) -> list:
         return ['ir']
 
-    def get(self) -> IRSample:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-            return self
-        except NotFound:
-            raise BusinessError('Sample not found.', 404)
-        
     def set(self, requestor: User) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be created.", 400)
@@ -54,8 +48,7 @@ class IRSample(Model):
             public=True
         ).url
 
-        data = self.document.set(self.to_dict())
-        return self.from_dict(data)
+        return self._set()
 
     def update(self, requestor: User) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
@@ -72,16 +65,12 @@ class IRSample(Model):
                 public=True
             ).url
 
-        data = self.document.update(self.to_dict())
-        return self.from_dict(data)
+        return self._update()
 
     def delete(self, requestor: User) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be deleted.", 400)
 
-        if not self.retrieved:
-            self.get()
-            
-        self.document.delete()
+        self.get()
         File(url=self.file_url).delete()
-        return self
+        return self._delete()

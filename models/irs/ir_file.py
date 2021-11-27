@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from cloud_storage.file import File
 from models.model import Model
 from models.exceptions import BusinessError
@@ -27,6 +25,10 @@ class IRFile(Model):
         return f'{self.ir.document_path}/files'
 
     @property
+    def entity_name(self) -> str:
+        return 'IR File'
+
+    @property
     def remove_from_input(self) -> list:
         return ['ir']
 
@@ -43,13 +45,9 @@ class IRFile(Model):
         return self
 
     def get(self, requestor: User) -> IRFile:
-        try:
-            self.from_dict(self.document.get())
-            self.calculate_url(requestor)
-            self.retrieved = True
-            return self
-        except NotFound:
-            raise BusinessError('File not found.', 404)
+        self._get()
+        self.calculate_url(requestor)
+        return self
         
     def set(self, requestor: User) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
@@ -63,8 +61,7 @@ class IRFile(Model):
             public=not self.ir.premium
         ).url
 
-        data = self.document.set(self.to_dict())
-        return self.from_dict(data)
+        return self._set()
 
     def update(self, requestor: User) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
@@ -81,16 +78,12 @@ class IRFile(Model):
                 public=not self.ir.premium
             ).url
 
-        data = self.document.update(self.to_dict())
-        return self.from_dict(data)
+        return self._update()
 
     def delete(self, requestor: User) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("File can't be deleted.", 400)
 
-        if not self.retrieved:
-            self.get(requestor)
-
-        self.document.delete()
+        self.get(requestor)
         File(url=self.file_url).delete()
-        return self
+        return self._delete()

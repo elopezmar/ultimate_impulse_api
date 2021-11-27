@@ -2,8 +2,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from algolia.index import Index
 from cloud_storage.file import File
 from models.model import Model
@@ -44,18 +42,12 @@ class Review(Model):
         )
 
     def get(self, content: bool=False, comments: bool=False) -> Review:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-
-            if content:
-                self.content.get()
-            if comments:
-                self.comments.get()
-        
-            return self
-        except NotFound:
-            raise BusinessError('Review not found.', 404)
+        self._get()
+        if content:
+            self.content.get()
+        if comments:
+            self.comments.get()
+        return self
         
     def set(self, requestor: User) -> Review:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
@@ -71,13 +63,10 @@ class Review(Model):
             ).url
 
         self.owner.from_user(requestor)
-        self.document.set(self.to_dict(collections=False))
-        self.content.set(requestor)
-        self.get(content=True)
-
         self.index.save()
-        return self
-
+        self._set()
+        self.content.set(requestor)
+        return self.get(content=True)
 
     def update(self, requestor: User) -> Review:
         current = Review(self.id).get()
@@ -95,26 +84,22 @@ class Review(Model):
                 public=True
             ).url
 
-        self.document.update(self.to_dict(collections=False))
-        self.content.update(requestor)
-        self.get(content=True)
-
         self.index.save()
-        return self
+        self._update()
+        self.content.update(requestor)
+        return self.get(content=True)
 
     def delete(self, requestor: User) -> Review:
-        if not self.retrieved:
-            self.get()
+        self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
 
         self.content.get().delete(requestor)
         self.comments.get().delete(requestor)
+        self.index.delete()
 
         if self.pic_url:
             File(url=self.pic_url).delete()
 
-        self.document.delete()
-        self.index.delete()
-        return self
+        return self._delete()

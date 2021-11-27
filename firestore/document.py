@@ -8,7 +8,8 @@ from firestore.client import client
 
 class Document():
     def __init__(self, path: str):
-        self.path = path
+        self.path: str = path
+        self.data: dict = {}
 
     @property
     def ref(self) -> DocumentReference:
@@ -18,7 +19,7 @@ class Document():
     def to_dict(data: DocumentSnapshot) -> dict:
         if data.exists:
             return {'id': data.id, **data.to_dict()}
-        raise NotFound('Resource not found.')
+        raise NotFound('Document not found.')
 
     @classmethod
     def to_dot_notation(cls, data: dict, prefix=None) -> dict:
@@ -32,28 +33,30 @@ class Document():
         return doted
 
     def get(self) -> dict:
-        data = cache.get(self.path)
-        if not data:
-            data = cache.set(self.path, self.to_dict(self.ref.get()))
-        return data
+        self.data = cache.get(self.path)
+        if not self.data:
+            self.data = cache.set(self.path, self.to_dict(self.ref.get()))
+        return self.data
 
     def set(self, data: dict) -> dict:
-        cache.set(self.path, data)
+        self.data = cache.set(self.path, data)
         data.pop('id', None)
         self.ref.set(data)
-        return cache.get(self.path)
+        return self.data
 
     def update(self, data: dict, overwrite=False) -> dict:
         if overwrite:
             return self.set(data)
         else:
             self.get()
-            cache.update(self.path, data)
+            self.data = cache.update(self.path, data)
             data.pop('id', None)
             data = self.to_dot_notation(data)
             self.ref.update(data)
-            return cache.get(self.path)
+            return self.data
                 
-    def delete(self):
-        cache.delete(self.path)
+    def delete(self) -> dict:
+        self.get()
         self.ref.delete()
+        cache.delete(self.path)
+        return self.data

@@ -3,7 +3,6 @@ from datetime import datetime
 
 from typing import Tuple
 
-from google.api_core.exceptions import NotFound
 from flask_jwt_extended import create_access_token
 from werkzeug.security import safe_str_cmp
 
@@ -46,14 +45,6 @@ class User(Model):
     def is_logged_in(self) -> bool:
         return self.role != None
 
-    def get(self) -> User:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-            return self
-        except NotFound:
-            raise BusinessError('User not found.', 404)
-
     def set(self, requestor: User) -> User:
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError(f"Role {self.role} doesn't exists.", 400)
@@ -66,8 +57,7 @@ class User(Model):
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
 
-        data = self.document.set(self.to_dict(collections=False))
-        return self.from_dict(data)
+        return self._set()
 
     def update(self, requestor: User) -> User:
         if requestor.id == self.id:
@@ -98,32 +88,26 @@ class User(Model):
                 public=True
             ).url
 
-        data = self.document.update(self.to_dict(collections=False))
-        return self.from_dict(data)
+        return self._update()
 
     def delete(self, requestor: User) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
             raise BusinessError("User can't be deleted.", 400)
 
-        if not self.retrieved:
-            self.get()
-
-        self.document.delete()
+        self.get()
         File(url=self.profile.pic_url).delete()
-        return self
+        return self._delete()
 
     def login(self) -> Tuple[str, User]:
         for user in UserList().get([('email', '==', self.email)]).items:
             if not user.verified:
-                raise BusinessError('Invalid email or password.', 400)
-            if not safe_str_cmp(user.password, self.password):
                 raise BusinessError('User not verified.', 400)
+            if not safe_str_cmp(user.password, self.password):
+                raise BusinessError('Invalid email or password.', 400)
             return create_access_token(user.id), user
         raise BusinessError('User not found.', 404)
 
     def verify(self):
-        if not self.retrieved:
-            self.get()
-
+        self.get()
         self.verified = True
-        self.document.update(self.to_dict(collections=False))
+        self._update()

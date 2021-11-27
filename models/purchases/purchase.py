@@ -25,9 +25,6 @@ class Purchase(Model):
     def collection_path(self) -> str:
         return 'user_purchases'
 
-    def get(self) -> Purchase:
-        return self.from_dict(self.document.get()) 
-
     def set(self, requestor: User) -> Purchase:
         if not requestor.is_logged_in:
             raise BusinessError("Purchase can't be created.", 400)
@@ -35,8 +32,7 @@ class Purchase(Model):
         self.ir.get()
         self.owner.from_user(requestor)
         self.total = self.ir.total
-        data = self.document.set(self.to_dict())
-        return self.from_dict(data)
+        return self._set()
 
     def update(self, requestor: User) -> Purchase:
         current = Purchase(id=self.id).get()
@@ -46,14 +42,10 @@ class Purchase(Model):
 
         self.ir = IR(id=current.ir.id).get()
         self.owner = Owner(id=current.owner.id).get()
-        data = self.document.update(self.to_dict())
-        return self.from_dict(data)
+        return self._update()
 
     def delete(self, requestor: User) -> Purchase:
         self.get()
-
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Purchase can't be deleted.", 400)
-
-        self.document.delete()
-        return self
+        return self._delete()

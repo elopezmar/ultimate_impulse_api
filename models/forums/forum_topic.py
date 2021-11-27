@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from algolia.index import Index
 from models.model import Model
 from models.forums.forum_reply_list import ForumReplyList
@@ -34,6 +32,10 @@ class ForumTopic(Model):
         return f'{self.forum.document_path}/topics'
 
     @property
+    def entity_name(self) -> str:
+        return 'Forum topic'
+
+    @property
     def remove_from_output(self) -> list:
         return ['forum']
 
@@ -48,37 +50,25 @@ class ForumTopic(Model):
         )
 
     def update_stats(self, add_replies: int=0) -> ForumTopic:
-        if not self.retrieved:
-            self.get()
-
+        self.get()
         self.stats.replies += add_replies
-        data = self.document.update(self.to_dict(collections=False))
         self.forum.update_stats(add_replies=add_replies)
-        return self.from_dict(data)
+        return self._update()
 
     def get(self, replies: bool=False) -> ForumTopic:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-
-            if replies:
-                self.replies.get()
-
-            return self
-        except NotFound:
-            raise BusinessError('Topic not found.', 404)
+        self._get()
+        if replies:
+            self.replies.get()
+        return self
 
     def set(self, requestor: User) -> ForumTopic:
         if not requestor.is_logged_in:
             return BusinessError("Topic can't be created.", 400)
 
         self.owner.from_user(requestor)
-        data = self.document.set(self.to_dict(collections=False))
         self.forum.update_stats(add_topics=1)
-        self.from_dict(data)
-
         self.index.save()
-        return self
+        return self._set()
 
     def update(self, requestor: User) -> ForumTopic:
         current = ForumTopic(self.forum, self.id).get()
@@ -86,24 +76,18 @@ class ForumTopic(Model):
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Topic can't be updated.", 400)
 
-        data = self.document.update(self.to_dict(collections=False))
-        self.from_dict(data)
-
         self.index.save()
-        return self
+        return self._update()
 
     def delete(self, requestor: User, update_forum_stats: bool=True) -> ForumTopic:
-        if not self.retrieved:
-            self.get()
+        self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Topic can't be deleted.", 400)
 
-        self.replies.get().delete(requestor)
-        self.document.delete()
-
         if update_forum_stats:
             self.forum.update_stats(add_topics=-1)
             
+        self.replies.get().delete(requestor)
         self.index.delete()
-        return self
+        return self._delete()
