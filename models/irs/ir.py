@@ -2,8 +2,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from algolia.index import Index
 from cloud_storage.file import File
 from models.model import Model
@@ -56,32 +54,24 @@ class IR(Model):
         self.discount = self.discount if self.discount != None else 0
         self.total = self.price - (self.price * (self.discount/100))
 
-    def update_stats(self, add_reviews: int=0, rating: float=0):
-        if not self.retrieved:
-            self.get()
-
+    def update_stats(self, add_reviews: int=0, rating: float=0) -> IR:
+        self.get()
         self.stats.rating = (
             ((self.stats.reviews * self.stats.rating) + rating) 
             / (self.stats.reviews + add_reviews)
         )
         self.stats.reviews += add_reviews
-        self.document.update(self.to_dict(collections=False))
+        return self._update()
 
     def get(self, requestor: User=None, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-
-            if samples:
-                self.samples.get()
-            if files and requestor:
-                self.files.get(requestor)
-            if reviews:
-                self.reviews.get()
-
-            return self
-        except NotFound:
-            raise BusinessError('IR not found.', 404)
+        self._get()
+        if samples:
+            self.samples.get()
+        if files and requestor:
+            self.files.get(requestor)
+        if reviews:
+            self.reviews.get()
+        return self
         
     def set(self, requestor: User) -> IR:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
@@ -103,12 +93,10 @@ class IR(Model):
             ).url
 
         self.calculate_price()
-        self.document.set(self.to_dict(collections=False))
+        self.index.save()
+        self._set()
         self.samples.set(requestor)
         self.files.set(requestor)
-        self.get(requestor, samples=True, files=True)
-
-        self.index.save()
         return self
 
     def update(self, requestor: User) -> IR:
@@ -148,17 +136,14 @@ class IR(Model):
             self.tags = current.tags
 
         self.calculate_price()
-        self.document.update(self.to_dict(collections=False))
+        self.index.save()
+        self._update()
         self.samples.update(requestor)
         self.files.update(requestor)
-        self.get(requestor, samples=True, files=True)
-
-        self.index.save()
-        return self
+        return self.get(requestor, samples=True, files=True)
 
     def delete(self, requestor: User) -> IR:
-        if not self.retrieved:
-            self.get()
+        self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be deleted.", 400)
@@ -170,6 +155,5 @@ class IR(Model):
         for pic_url in self.pics_urls:
             File(url=pic_url).delete()
 
-        self.document.delete()
         self.index.delete()
-        return self
+        return self._delete()

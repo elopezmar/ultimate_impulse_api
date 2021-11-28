@@ -4,8 +4,6 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from google.api_core.exceptions import NotFound
-
 from models.model import Model
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
@@ -30,47 +28,35 @@ class ForumReply(Model):
         return f'{self.topic.document_path}/replies'
 
     @property
+    def entity_name(self) -> str:
+        return 'Forum reply'
+
+    @property
     def remove_from_output(self) -> list:
         return ['topic']
 
-    def get(self) -> ForumReply:
-        try:
-            self.from_dict(self.document.get())
-            self.retrieved = True
-            return self
-        except NotFound:
-            raise BusinessError('Reply not found.', 404)
-        
     def set(self, requestor: User) -> ForumReply:
         if not requestor.is_logged_in:
             return BusinessError("Reply can't be created.", 400)
 
         self.owner.from_user(requestor)
-        data = self.document.set(self.to_dict())
         self.topic.update_stats(add_replies=1)
-        return self.from_dict(data)
+        return self._set()
 
     def update(self, requestor: User) -> ForumReply:
         current = ForumReply(self.topic, self.id).get()
-
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Reply can't be updated.", 400)
-
-        data = self.document.update(self.to_dict())
-        return self.from_dict(data)
+        return self._update()
 
     def delete(self, requestor: User, update_topic_stats: bool=True) -> ForumReply:
-        if not self.retrieved:
-            self.get()
-
+        self.get()
         owners = [self.owner.id, self.topic.owner.id]
 
         if requestor.id not in owners and requestor.role != Roles.ADMIN:
             raise BusinessError("Reply can't be deleted.", 400)
 
-        self.document.delete()
-
         if update_topic_stats:
             self.topic.update_stats(add_replies=-1)
             
-        return self
+        return self._delete()

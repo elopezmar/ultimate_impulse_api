@@ -3,7 +3,7 @@ from copy import deepcopy
 
 class Cache():
     def __init__(self):
-        self.info = {}
+        self.info: dict = {}
 
     def exists(self, key: str) -> bool:
         return self.get(key) != None

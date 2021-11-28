@@ -4,9 +4,12 @@ import abc
 import uuid
 from typing import Any, Union, TypeVar, TYPE_CHECKING
 
+from google.api_core.exceptions import NotFound
+
 from algolia.index import Index
 from firestore.document import Document
 from models.model_list import ModelList
+from models.exceptions import BusinessError
 
 if TYPE_CHECKING:
     from models.users.user import User
@@ -20,6 +23,14 @@ class Model():
         self.retrieved = False
 
     @property
+    def __data(self) -> dict:
+        return self.to_dict(collections=False)
+
+    @__data.setter
+    def __data(self, data: dict):
+        self.from_dict(data)
+
+    @property
     @abc.abstractmethod
     def collection_path(self) -> str:
         pass
@@ -29,12 +40,12 @@ class Model():
         return f'{self.collection_path}/{self.id}'
 
     @property
-    def document(self) -> Document:
+    def __document(self) -> Document:
         return Document(self.document_path)
 
     @property
     def entity_name(self) -> str:
-        return 'Model'
+        return self.__class__.__name__
 
     @property
     def remove_from_input(self) -> list:
@@ -90,9 +101,27 @@ class Model():
 
         return data
 
-    @abc.abstractmethod
+    def _get(self: T) -> T:
+        try:
+            self.__data = self.__document.get()
+            return self
+        except NotFound:
+            raise BusinessError(f'{self.entity_name} not found', 404)
+
+    def _set(self: T) -> T:
+        self.__data = self.__document.set(self.__data)
+        return self
+
+    def _update(self: T, overwrite: bool=False) -> T:
+        self.__data = self.__document.update(self.__data, overwrite)
+        return self
+
+    def _delete(self: T) -> T:
+        self.__data = self.__document.delete()
+        return self
+
     def get(self: T) -> T:
-        pass
+        return self._get()
 
     @abc.abstractmethod
     def set(self: T, requestor: User) -> T:
