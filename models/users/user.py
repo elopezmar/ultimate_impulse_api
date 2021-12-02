@@ -13,6 +13,7 @@ from models.users.user_stats import UserStats
 from models.users.user_list import UserList
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 
 class User(Model):
@@ -45,7 +46,7 @@ class User(Model):
     def is_logged_in(self) -> bool:
         return self.role != None
 
-    def set(self, requestor: User) -> User:
+    def set(self) -> User:
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError(f"Role {self.role} doesn't exists.", 400)
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR] and not requestor.role == Roles.ADMIN:
@@ -59,7 +60,7 @@ class User(Model):
 
         return self._set()
 
-    def update(self, requestor: User) -> User:
+    def update(self) -> User:
         if requestor.id == self.id:
             current = requestor
         elif requestor.role == Roles.ADMIN:
@@ -90,7 +91,7 @@ class User(Model):
 
         return self._update()
 
-    def delete(self, requestor: User) -> User:
+    def delete(self) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
             raise BusinessError("User can't be deleted.", 400)
 

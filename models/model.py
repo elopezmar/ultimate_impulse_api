@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import abc
 import uuid
-from typing import Any, Union, TypeVar, TYPE_CHECKING
+from typing import Any, Union, TypeVar
 
 from google.api_core.exceptions import NotFound
 
@@ -11,8 +11,6 @@ from firestore.document import Document
 from models.model_list import ModelList
 from models.exceptions import BusinessError
 
-if TYPE_CHECKING:
-    from models.users.user import User
 
 T = TypeVar('T', bound='Model')
 
@@ -124,13 +122,13 @@ class Model():
         return self._get()
 
     @abc.abstractmethod
-    def set(self: T, requestor: User) -> T:
+    def set(self: T) -> T:
         pass
 
     @abc.abstractmethod
-    def update(self: T, requestor: User) -> T:
+    def update(self: T) -> T:
         pass
     
     @abc.abstractmethod
-    def delete(self: T, requestor: User) -> T:
+    def delete(self: T) -> T:
         pass

@@ -6,10 +6,10 @@ from cloud_storage.file import File
 from models.model import Model
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
-    from models.users.user import User
 
 
 class IRSample(Model):
@@ -36,7 +36,7 @@ class IRSample(Model):
     def remove_from_output(self) -> list:
         return ['ir']
 
-    def set(self, requestor: User) -> IRSample:
+    def set(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be created.", 400)
 
@@ -50,7 +50,7 @@ class IRSample(Model):
 
         return self._set()
 
-    def update(self, requestor: User) -> IRSample:
+    def update(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be updated.", 400)
 
@@ -67,7 +67,7 @@ class IRSample(Model):
 
         return self._update()
 
-    def delete(self, requestor: User) -> IRSample:
+    def delete(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be deleted.", 400)
 

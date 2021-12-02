@@ -5,12 +5,12 @@ from flask_jwt_extended import jwt_required
 
 from cloud_storage.file import File
 from schemas.files.file_schema import FileSchema
-from resources.utils import handle_errors
+from resources.utils import handle_request
 
 
 class FileResource(Resource):
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def get(self):
         schema = FileSchema(partial=('b64_data',))
         data = schema.load(request.get_json())
@@ -18,7 +18,7 @@ class FileResource(Resource):
         return {'url': file.signed_url}, 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def post(self):
         schema = FileSchema(partial=('url',))
         data = schema.load(request.get_json())
@@ -28,7 +28,7 @@ class FileResource(Resource):
         return {'url': file.url}, 201
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def put(self):
         schema = FileSchema()
         data = schema.load(request.get_json())
@@ -40,7 +40,7 @@ class FileResource(Resource):
         return {'message': 'File updated.'}, 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def delete(self):
         schema = FileSchema(partial=('b64_data',))
         data = schema.load(request.get_json())

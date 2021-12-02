@@ -6,10 +6,10 @@ from cloud_storage.file import File
 from models.model import Model
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
-    from models.users.user import User
 
 
 class IRFile(Model):
@@ -36,7 +36,7 @@ class IRFile(Model):
     def remove_from_output(self) -> list:
         return ['ir']
 
-    def calculate_url(self, requestor: User) -> IRFile:
+    def calculate_url(self) -> IRFile:
         if self.ir.premium:
             if requestor.is_logged_in:
                 self.file_url = File(url=self.file_url).signed_url
@@ -44,12 +44,12 @@ class IRFile(Model):
                 self.file_url = None
         return self
 
-    def get(self, requestor: User) -> IRFile:
+    def get(self) -> IRFile:
         self._get()
-        self.calculate_url(requestor)
+        self.calculate_url()
         return self
         
-    def set(self, requestor: User) -> IRFile:
+    def set(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("File can't be created.", 400)
 
@@ -63,12 +63,12 @@ class IRFile(Model):
 
         return self._set()
 
-    def update(self, requestor: User) -> IRFile:
+    def update(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("File can't be updated.", 400)
 
         if self.file_url:
-            current = IRFile(self.ir, self.id).get(requestor)
+            current = IRFile(self.ir, self.id).get()
 
             self.file_url = File(
                 prefix='irs_files', url=current.file_url
@@ -80,10 +80,10 @@ class IRFile(Model):
 
         return self._update()
 
-    def delete(self, requestor: User) -> IRFile:
+    def delete(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("File can't be deleted.", 400)
 
-        self.get(requestor)
+        self.get()
         File(url=self.file_url).delete()
         return self._delete()

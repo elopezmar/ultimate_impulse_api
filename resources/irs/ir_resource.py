@@ -3,25 +3,24 @@ from flask_restful import Resource, request
 
 from models.irs.ir import IR
 from schemas.irs.ir_schema import IRSchema
-from resources.utils import get_requestor, handle_errors
+from resources.utils import handle_request
 
 
 class IRResource(Resource):
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def post(self):
         schema = IRSchema(partial=('id', 'samples.id', 'files.id'))
         data = schema.load(request.get_json())
         ir = IR().from_dict(data)
-        ir.set(get_requestor())
+        ir.set()
         return schema.dump(ir.to_dict()), 201
 
     @jwt_required(optional=True)
-    @handle_errors()
+    @handle_request()
     def get(self):
         schema = IRSchema()
         ir = IR(id=request.args['id']).get(
-            requestor=get_requestor(),
             samples=request.args.get('samples', '').lower() == 'true',
             files=request.args.get('files', '').lower() == 'true',
             reviews=request.args.get('reviews', '').lower() == 'true'
@@ -29,7 +28,7 @@ class IRResource(Resource):
         return schema.dump(ir.to_dict()), 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def put(self):
         schema = IRSchema(
             partial=(
@@ -41,11 +40,11 @@ class IRResource(Resource):
         ))
         data = schema.load(request.get_json())
         ir = IR().from_dict(data)
-        ir.update(get_requestor())
+        ir.update()
         return {'message': 'IR updated.'}, 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def delete(self):
         schema = IRSchema(
             partial=(
@@ -59,5 +58,5 @@ class IRResource(Resource):
         )
         data = schema.load(request.get_json())
         ir = IR().from_dict(data)
-        ir.delete(get_requestor())
+        ir.delete()
         return {'message': 'IR deleted.'}, 200

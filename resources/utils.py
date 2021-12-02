@@ -5,26 +5,28 @@ from marshmallow.exceptions import ValidationError
 from flask_jwt_extended import get_jwt_identity
 from flask_restful import request
 
-from models.users.user import User
+from firestore.cache import cache
 from models.exceptions import BusinessError
+from resources.session import requestor
 
 def get_bool_arg(name: str) -> bool:
     return request.args.get(name, '').lower() == 'true'
 
-def get_requestor() -> User:
+def set_requestor():
     try:
-        user = User(id=get_jwt_identity()).get()
+        requestor.get(get_jwt_identity())
     except RuntimeError:
-        user = User()
+        requestor.reset()
     except BusinessError:
-        user = User()
-    return user
+        requestor.reset()
 
-def handle_errors():
+def handle_request():
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
+                cache.clear()
+                set_requestor()
                 return func(*args, **kwargs)
             except ValidationError as err:
                 return err.messages, 400

@@ -7,7 +7,6 @@ from models.forums.forum_reply import ForumReply
 
 if TYPE_CHECKING:
     from models.forums.forum_topic import ForumTopic
-    from models.users.user import User
 
 
 class ForumReplyList(ModelList):
@@ -19,7 +18,7 @@ class ForumReplyList(ModelList):
     def item(self) -> ForumReply:
         return ForumReply(self.topic)
 
-    def delete(self, requestor: User) -> ForumReplyList:
+    def delete(self) -> ForumReplyList:
         for reply in self.items:
-            reply.delete(requestor, update_topic_stats=False)
+            reply.delete(update_topic_stats=False)
         return self

@@ -3,20 +3,20 @@ from flask_restful import Resource, request
 
 from models.forums.forum import Forum
 from schemas.forums.forum_schema import ForumSchema
-from resources.utils import get_requestor, handle_errors
+from resources.utils import handle_request
 
 
 class ForumResource(Resource):
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def post(self):
         schema = ForumSchema(partial=('id',))
         data = schema.load(request.get_json())
         forum = Forum().from_dict(data)
-        forum.set(get_requestor())
+        forum.set()
         return schema.dump(forum.to_dict()), 201
 
-    @handle_errors()
+    @handle_request()
     def get(self):
         schema = ForumSchema()
         forum = Forum(request.args['id']).get(
@@ -25,16 +25,16 @@ class ForumResource(Resource):
         return schema.dump(forum.to_dict()), 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def put(self):
         schema = ForumSchema(partial=('title', 'description'))
         data = schema.load(request.get_json())
         forum = Forum().from_dict(data)
-        forum.update(get_requestor())
+        forum.update()
         return {'message': 'Forum updated.'}, 200
 
     @jwt_required()
-    @handle_errors()
+    @handle_request()
     def delete(self):
         schema = ForumSchema(
             partial=('title', 'description'),
@@ -42,5 +42,5 @@ class ForumResource(Resource):
         )
         data = schema.load(request.get_json())
         forum = Forum().from_dict(data)
-        forum.delete(get_requestor())
+        forum.delete()
         return {'message': 'Forum deleted.'}, 200

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from models.model import Model
 from models.forums.forum_stats import ForumStats
@@ -8,9 +7,7 @@ from models.forums.forum_topic_list import ForumTopicList
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
-
-if TYPE_CHECKING:
-    from models.users.user import User
+from resources.session import requestor
 
 
 class Forum(Model):
@@ -39,19 +36,19 @@ class Forum(Model):
             self.topics.get()
         return self
             
-    def set(self, requestor: User) -> Forum:
+    def set(self) -> Forum:
         if requestor.role != Roles.ADMIN:
             return BusinessError("Forum can't be created.", 400)
         self.owner.from_user(requestor)
         return self._set()
 
-    def update(self, requestor: User) -> Forum:
+    def update(self) -> Forum:
         if requestor.role != Roles.ADMIN:
             raise BusinessError("Forum can't be updated.", 400)
         return self._update()
 
-    def delete(self, requestor: User) -> Forum:
+    def delete(self) -> Forum:
         if requestor.role != Roles.ADMIN:
             raise BusinessError("Forum can't be deleted.", 400)
-        self.topics.get().delete(requestor)
+        self.topics.get().delete()
         return self._delete()

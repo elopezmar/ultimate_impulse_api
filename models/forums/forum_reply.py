@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -8,10 +7,10 @@ from models.model import Model
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.forums.forum_topic import ForumTopic
-    from models.users.user import User
 
 
 class ForumReply(Model):
@@ -35,7 +34,7 @@ class ForumReply(Model):
     def remove_from_output(self) -> list:
         return ['topic']
 
-    def set(self, requestor: User) -> ForumReply:
+    def set(self) -> ForumReply:
         if not requestor.is_logged_in:
             return BusinessError("Reply can't be created.", 400)
 
@@ -43,13 +42,13 @@ class ForumReply(Model):
         self.topic.update_stats(add_replies=1)
         return self._set()
 
-    def update(self, requestor: User) -> ForumReply:
+    def update(self) -> ForumReply:
         current = ForumReply(self.topic, self.id).get()
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Reply can't be updated.", 400)
         return self._update()
 
-    def delete(self, requestor: User, update_topic_stats: bool=True) -> ForumReply:
+    def delete(self, update_topic_stats: bool=True) -> ForumReply:
         self.get()
         owners = [self.owner.id, self.topic.owner.id]
 

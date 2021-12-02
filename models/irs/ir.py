@@ -1,6 +1,5 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from algolia.index import Index
 from cloud_storage.file import File
@@ -12,9 +11,7 @@ from models.irs.ir_stats import IRStats
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
-
-if TYPE_CHECKING:
-    from models.users.user import User
+from resources.session import requestor
 
 
 class IR(Model):
@@ -63,17 +60,17 @@ class IR(Model):
         self.stats.reviews += add_reviews
         return self._update()
 
-    def get(self, requestor: User=None, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
+    def get(self, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
         self._get()
         if samples:
             self.samples.get()
-        if files and requestor:
-            self.files.get(requestor)
+        if files:
+            self.files.get()
         if reviews:
             self.reviews.get()
         return self
         
-    def set(self, requestor: User) -> IR:
+    def set(self) -> IR:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError("IR can't be created.", 400)
 
@@ -95,11 +92,11 @@ class IR(Model):
         self.calculate_price()
         self.index.save()
         self._set()
-        self.samples.set(requestor)
-        self.files.set(requestor)
+        self.samples.set()
+        self.files.set()
         return self
 
-    def update(self, requestor: User) -> IR:
+    def update(self) -> IR:
         current = IR(self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -138,19 +135,19 @@ class IR(Model):
         self.calculate_price()
         self.index.save()
         self._update()
-        self.samples.update(requestor)
-        self.files.update(requestor)
-        return self.get(requestor, samples=True, files=True)
+        self.samples.update()
+        self.files.update()
+        return self.get(samples=True, files=True)
 
-    def delete(self, requestor: User) -> IR:
+    def delete(self) -> IR:
         self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be deleted.", 400)
 
-        self.samples.get().delete(requestor)
-        self.files.get(requestor).delete(requestor)
-        self.reviews.get().delete(requestor, update_ir_stats=False)
+        self.samples.get().delete()
+        self.files.get().delete()
+        self.reviews.get().delete(update_ir_stats=False)
 
         for pic_url in self.pics_urls:
             File(url=pic_url).delete()
