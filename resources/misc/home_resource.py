@@ -4,11 +4,11 @@ from models.irs.ir_list import IRList
 from models.reviews.review_list import ReviewList
 from schemas.irs.ir_schema import IRSchema
 from schemas.reviews.review_schema import ReviewSchema
-from resources.utils import handle_errors
+from resources.utils import handle_request
 
 
 class HomeResource(Resource):
-    @handle_errors()
+    @handle_request()
     def get(self):
         ir_schema = IRSchema(many=True)
         review_schema = ReviewSchema(many=True)

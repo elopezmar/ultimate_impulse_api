@@ -7,7 +7,6 @@ from models.irs.ir_file import IRFile
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
-    from models.users.user import User
 
 
 class IRFileList(ModelList):
@@ -20,9 +19,9 @@ class IRFileList(ModelList):
     def item(self) -> IRFile:
         return IRFile(self.ir)
 
-    def get(self, requestor: User, filters: list=None) -> IRFileList:
+    def get(self, filters: list=None) -> IRFileList:
         self.retrieved = True
         self.from_list(self.collection.get(filters))
         for item in self.items:
-            item.calculate_url(requestor)
+            item.calculate_url()
         return self

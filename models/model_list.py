@@ -8,7 +8,6 @@ from firestore.document import Document
 
 if TYPE_CHECKING:
     from models.model import Model
-    from models.users.user import User
 
 T = TypeVar('T', bound='ModelList')
 
@@ -61,18 +60,18 @@ class ModelList():
         self.retrieved = True
         return self.from_list(self.collection.get(filters, order_by, limit))
 
-    def set(self: T, requestor: User) -> T:
+    def set(self: T) -> T:
         for item in self.items:
-            item.set(requestor)
+            item.set()
         return self
 
-    def update(self: T, requestor: User) -> T:
+    def update(self: T) -> T:
         for item in self.items:
-            item.update(requestor)
+            item.update()
         return self
     
-    def delete(self: T, requestor: User) -> T:
+    def delete(self: T) -> T:
         for item in self.items:
-            item.delete(requestor)
+            item.delete()
         return self
         

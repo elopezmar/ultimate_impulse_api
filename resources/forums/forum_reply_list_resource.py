@@ -4,11 +4,11 @@ from models.forums.forum import Forum
 from models.forums.forum_topic import ForumTopic
 from models.forums.forum_reply_list import ForumReplyList
 from schemas.forums.forum_reply_list_schema import ForumReplyListSchema
-from resources.utils import handle_errors
+from resources.utils import handle_request
 
 
 class ForumReplyListResource(Resource):
-    @handle_errors()
+    @handle_request()
     def get(self, forum_id: str, topic_id: str):
         schema = ForumReplyListSchema()
         forum = Forum(forum_id)

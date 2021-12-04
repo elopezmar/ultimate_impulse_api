@@ -6,10 +6,10 @@ from models.model import Model
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.reviews.review import Review
-    from models.users.user import User
 
 
 class ReviewComment(Model):
@@ -33,14 +33,14 @@ class ReviewComment(Model):
     def remove_from_output(self) -> list:
         return ['review']
 
-    def set(self, requestor: User) -> ReviewComment:
+    def set(self) -> ReviewComment:
         if not requestor.is_logged_in:
             raise BusinessError("Comment can't be created.", 400)
 
         self.owner.from_user(requestor)
         return self._set()
 
-    def update(self, requestor: User) -> ReviewComment:
+    def update(self) -> ReviewComment:
         current = ReviewComment(self.review, self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -50,7 +50,7 @@ class ReviewComment(Model):
 
         return self._update()
 
-    def delete(self, requestor: User) -> ReviewComment:
+    def delete(self) -> ReviewComment:
         self.get()
 
         if requestor.id not in [self.owner.id, self.review.owner.id] and requestor.role != Roles.ADMIN:

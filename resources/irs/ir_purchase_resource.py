@@ -3,11 +3,11 @@ from flask_restful import Resource
 from models.irs.ir import IR
 from models.purchases.purchase_list import PurchaseList
 from schemas.purchases.purchase_list_schema import PurchaseListSchema
-from resources.utils import handle_errors
+from resources.utils import handle_request
 
 
 class IRPurchaseListResource(Resource):
-    @handle_errors()
+    @handle_request()
     def get(self, ir_id):
         schema = PurchaseListSchema(exclude=('purchases.ir',))
         ir = IR(ir_id).get()

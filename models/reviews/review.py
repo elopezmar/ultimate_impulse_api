@@ -1,6 +1,5 @@
 from __future__ import annotations
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from algolia.index import Index
 from cloud_storage.file import File
@@ -10,9 +9,7 @@ from models.reviews.review_content import ReviewContent
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
-
-if TYPE_CHECKING:
-    from models.users.user import User
+from resources.session import requestor
     
 
 class Review(Model):
@@ -49,7 +46,7 @@ class Review(Model):
             self.comments.get()
         return self
         
-    def set(self, requestor: User) -> Review:
+    def set(self) -> Review:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError("Review can't be created.", 400)
 
@@ -65,10 +62,10 @@ class Review(Model):
         self.owner.from_user(requestor)
         self.index.save()
         self._set()
-        self.content.set(requestor)
+        self.content.set()
         return self.get(content=True)
 
-    def update(self, requestor: User) -> Review:
+    def update(self) -> Review:
         current = Review(self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -86,17 +83,17 @@ class Review(Model):
 
         self.index.save()
         self._update()
-        self.content.update(requestor)
+        self.content.update()
         return self.get(content=True)
 
-    def delete(self, requestor: User) -> Review:
+    def delete(self) -> Review:
         self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
 
-        self.content.get().delete(requestor)
-        self.comments.get().delete(requestor)
+        self.content.get().delete()
+        self.comments.get().delete()
         self.index.delete()
 
         if self.pic_url:

@@ -7,10 +7,10 @@ from models.model import Model
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
-    from models.users.user import User
 
 
 class IRReview(Model):
@@ -41,7 +41,7 @@ class IRReview(Model):
     def remove_from_output(self) -> list:
         return ['ir']
 
-    def set(self, requestor: User) -> IRReview:
+    def set(self) -> IRReview:
         if not requestor.is_logged_in:
             raise BusinessError("Review can't be created.", 400)
 
@@ -49,7 +49,7 @@ class IRReview(Model):
         self.ir.update_stats(add_reviews=1, rating=self.rating)
         return self._set()
 
-    def update(self, requestor: User) -> IRReview:
+    def update(self) -> IRReview:
         current = IRReview(self.ir, self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -62,7 +62,7 @@ class IRReview(Model):
 
         return self._update()
 
-    def delete(self, requestor: User, update_ir_stats: bool=True) -> IRReview:
+    def delete(self, update_ir_stats: bool=True) -> IRReview:
         self.get()
 
         if requestor.id not in [self.owner.id, self.ir.owner.id] and requestor.role != Roles.ADMIN:

@@ -10,9 +10,9 @@ from models.forums.forum_topic_stats import ForumTopicStats
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
-    from models.users.user import User
     from models.forums.forum import Forum
 
 
@@ -61,7 +61,7 @@ class ForumTopic(Model):
             self.replies.get()
         return self
 
-    def set(self, requestor: User) -> ForumTopic:
+    def set(self) -> ForumTopic:
         if not requestor.is_logged_in:
             return BusinessError("Topic can't be created.", 400)
 
@@ -70,7 +70,7 @@ class ForumTopic(Model):
         self.index.save()
         return self._set()
 
-    def update(self, requestor: User) -> ForumTopic:
+    def update(self) -> ForumTopic:
         current = ForumTopic(self.forum, self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -79,7 +79,7 @@ class ForumTopic(Model):
         self.index.save()
         return self._update()
 
-    def delete(self, requestor: User, update_forum_stats: bool=True) -> ForumTopic:
+    def delete(self, update_forum_stats: bool=True) -> ForumTopic:
         self.get()
 
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
@@ -88,6 +88,6 @@ class ForumTopic(Model):
         if update_forum_stats:
             self.forum.update_stats(add_topics=-1)
             
-        self.replies.get().delete(requestor)
+        self.replies.get().delete()
         self.index.delete()
         return self._delete()

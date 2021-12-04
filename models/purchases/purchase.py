@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from datetime import datetime
 
@@ -8,9 +7,7 @@ from models.irs.ir import IR
 from models.owners.owner import Owner
 from models.exceptions import BusinessError
 from models.utils import Roles
-
-if TYPE_CHECKING:
-    from models.users.user import User
+from resources.session import requestor
 
 
 class Purchase(Model):
@@ -25,7 +22,7 @@ class Purchase(Model):
     def collection_path(self) -> str:
         return 'user_purchases'
 
-    def set(self, requestor: User) -> Purchase:
+    def set(self) -> Purchase:
         if not requestor.is_logged_in:
             raise BusinessError("Purchase can't be created.", 400)
         
@@ -34,7 +31,7 @@ class Purchase(Model):
         self.total = self.ir.total
         return self._set()
 
-    def update(self, requestor: User) -> Purchase:
+    def update(self) -> Purchase:
         current = Purchase(id=self.id).get()
 
         if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
@@ -44,7 +41,7 @@ class Purchase(Model):
         self.owner = Owner(id=current.owner.id).get()
         return self._update()
 
-    def delete(self, requestor: User) -> Purchase:
+    def delete(self) -> Purchase:
         self.get()
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Purchase can't be deleted.", 400)

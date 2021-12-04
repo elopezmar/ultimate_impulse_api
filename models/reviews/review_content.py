@@ -8,10 +8,10 @@ from models.model_list import ModelList
 from models.reviews.review_section import ReviewSection
 from models.exceptions import BusinessError
 from models.utils import Roles
+from resources.session import requestor
 
 if TYPE_CHECKING:
     from models.reviews.review import Review
-    from models.users.user import User
 
 
 class ReviewContent(ModelList):
@@ -36,7 +36,7 @@ class ReviewContent(ModelList):
         except NotFound:
             raise BusinessError('Content not found.', 404)
 
-    def set(self, requestor: User) -> ReviewContent:
+    def set(self) -> ReviewContent:
         if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Content can't be created.", 400)
 
@@ -46,7 +46,7 @@ class ReviewContent(ModelList):
         data = self.document.set(self.to_dict(self.name))
         return self.from_dict(self.name, data)
 
-    def update(self, requestor: User) -> ReviewContent:
+    def update(self) -> ReviewContent:
         if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Content can't be updated.", 400)
 
@@ -56,7 +56,7 @@ class ReviewContent(ModelList):
         data = self.document.update(self.to_dict(self.name), overwrite=True)
         return self.from_dict(self.name, data)
 
-    def delete(self, requestor: User) -> ReviewContent:
+    def delete(self) -> ReviewContent:
         if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Content can't be deleted.", 400)
             

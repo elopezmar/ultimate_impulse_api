@@ -7,7 +7,6 @@ from models.irs.ir_review import IRReview
 
 if TYPE_CHECKING:
     from models.irs.ir import IR
-    from models.users.user import User
 
 
 class IRReviewList(ModelList):
@@ -26,8 +25,8 @@ class IRReviewList(ModelList):
         filters.append(('ir_id', '==', self.ir.id))
         return self.from_list(self.collection.get(filters))
     
-    def delete(self, requestor: User, update_ir_stats: bool=True) -> IRReviewList:
+    def delete(self, update_ir_stats: bool=True) -> IRReviewList:
         for review in self.items:
-            review.delete(requestor, update_ir_stats)
+            review.delete(update_ir_stats)
         return self
         
