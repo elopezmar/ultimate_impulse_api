@@ -20,9 +20,9 @@ class IRReview(Model):
         self.ir_id: str = ir.id
         self.title: str = None
         self.description: str = None
-        self.rating: float = 0
-        self.likes: int = 0
-        self.created_at: datetime = datetime.now()
+        self.rating: float = None
+        self.likes: int = None
+        self.created_at: datetime = None
         self.owner: Owner = Owner()
 
     @property
@@ -34,10 +34,6 @@ class IRReview(Model):
         return 'IR review'
 
     @property
-    def remove_from_input(self) -> list:
-        return ['ir']
-
-    @property
     def remove_from_output(self) -> list:
         return ['ir']
 
@@ -46,31 +42,26 @@ class IRReview(Model):
             raise BusinessError("Review can't be created.", 400)
 
         self.owner.from_user(requestor)
-        self.ir.update_stats(add_reviews=1, rating=self.rating)
+        self.created_at = datetime.now()
+        self.likes = 0
+        self.ir.increment_stats(reviews=1, rating=self.rating)
         return self._set()
 
     def update(self) -> IRReview:
-        current = IRReview(self.ir, self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be updated.", 400)
-        if current.ir_id != self.ir.id:
+        if self.ir_id != self.ir.id:
             raise BusinessError("Review doesn't belong to the IR.", 404)
 
-        if self.rating != None and current.rating != self.rating:
-            self.ir.update_stats(rating=(self.rating - current.rating))
-
+        current = IRReview(self.ir, self.id).get()
+        self.ir.increment_stats(rating=(self.rating - current.rating))
         return self._update()
 
-    def delete(self, update_ir_stats: bool=True) -> IRReview:
-        self.get()
-
+    def delete(self) -> IRReview:
         if requestor.id not in [self.owner.id, self.ir.owner.id] and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
         if self.ir_id != self.ir.id:
             raise BusinessError("Review doesn't belong to the IR.", 404)
 
-        if update_ir_stats:
-            self.ir.update_stats(add_reviews=-1, rating=(self.rating * -1))
-
+        self.ir.increment_stats(reviews=-1, rating=(self.rating * -1))
         return self._delete()

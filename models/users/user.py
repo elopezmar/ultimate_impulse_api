@@ -6,7 +6,6 @@ from typing import Tuple
 from flask_jwt_extended import create_access_token
 from werkzeug.security import safe_str_cmp
 
-from cloud_storage.file import File
 from models.model import Model
 from models.users.user_profile import UserProfile
 from models.users.user_stats import UserStats
@@ -22,8 +21,8 @@ class User(Model):
         self.email: str = None
         self.password: str = None
         self.username: str = None
-        self.created_at: datetime = datetime.now()
-        self.verified: bool = False
+        self.created_at: datetime = None
+        self.verified: bool = None
         self.role: str = None
         self.profile: UserProfile = UserProfile()
         self.stats: UserStats = UserStats()
@@ -42,11 +41,10 @@ class User(Model):
     def remove_from_output(self) -> list:
         return ['old_password', 'new_password']
 
-    @property
-    def is_logged_in(self) -> bool:
-        return self.role != None
-
     def set(self) -> User:
+        self.role = self.role if self.role else Roles.USER
+        self.verified = False
+
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
             raise BusinessError(f"Role {self.role} doesn't exists.", 400)
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR] and not requestor.role == Roles.ADMIN:
@@ -58,15 +56,16 @@ class User(Model):
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
 
+        self.created_at = datetime.now()
+        self.profile.set()
+        self.stats.set()
         return self._set()
 
     def update(self) -> User:
-        if requestor.id == self.id:
-            current = requestor
-        elif requestor.role == Roles.ADMIN:
-            current = User(self.id).get()
-        else:
+        if requestor.id != self.id and requestor.role != Roles.ADMIN:
             raise BusinessError("User can't be updated.", 400)
+
+        current = User(self.id).get()
 
         if self.username and self.username != current.username:
             if UserList().get([('username', '==', self.username)]).items:
@@ -77,26 +76,16 @@ class User(Model):
                 raise BusinessError('Old password is incorrect.', 400)
             elif safe_str_cmp(self.new_password, current.password):
                 raise BusinessError('New password cannot be old password.', 400)
-            else:
-                self.password = self.new_password
+            self.password = self.new_password
 
-        if self.profile.pic_url:
-            self.profile.pic_url = File(
-                prefix='users', url=current.profile.pic_url
-            ).overwrite(
-                data=File(url=self.profile.pic_url)
-            ).accessibility(
-                public=True
-            ).url
-
+        self.profile.update(current.profile.pic_url)
         return self._update()
 
     def delete(self) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
             raise BusinessError("User can't be deleted.", 400)
 
-        self.get()
-        File(url=self.profile.pic_url).delete()
+        self.profile.delete()
         return self._delete()
 
     def login(self) -> Tuple[str, User]:
@@ -108,7 +97,6 @@ class User(Model):
             return create_access_token(user.id), user
         raise BusinessError('User not found.', 404)
 
-    def verify(self):
-        self.get()
+    def verify(self) -> User:
         self.verified = True
-        self._update()
+        return self._update()

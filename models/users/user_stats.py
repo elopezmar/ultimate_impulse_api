@@ -11,3 +11,7 @@ class UserStats(Model):
     @property
     def remove_from_output(self) -> list:
         return ['id']
+
+    def set(self) -> UserStats:
+        self.topics_created = 0
+        return self

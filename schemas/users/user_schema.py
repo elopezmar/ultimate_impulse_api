@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from marshmallow import Schema, fields
 
-from models.utils import Roles
-
 
 class UserSchema(Schema):
     id = fields.Str(required=True)
@@ -12,7 +10,7 @@ class UserSchema(Schema):
     username = fields.Str(required=True)
     created_at = fields.DateTime(dump_only=True)
     verified = fields.Boolean(dump_only=True)
-    role = fields.Str(missing=Roles.USER)
+    role = fields.Str()
     profile = fields.Nested(Schema.from_dict(dict(
         first_name = fields.Str(),
         last_name = fields.Str(),

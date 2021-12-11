@@ -19,6 +19,6 @@ class ReviewCommentList(ModelList):
         return ReviewComment(self.review)
 
     def get(self, filters: list=None):
-        filters = filters if filters else None
+        filters = filters if filters else []
         filters.append(('review_id', '==', self.review.id))
         return self.from_list(self.collection.get(filters))

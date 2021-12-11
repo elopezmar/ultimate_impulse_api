@@ -8,37 +8,35 @@ from resources.utils import handle_request
 
 
 class IRSampleResource(Resource):
+    def sample(self, ir_id: str, sample_id: str=None) -> IRSample:
+        ir = IR(ir_id).get()
+        sample = IRSample(ir, sample_id)
+        return sample
+
     @jwt_required()
     @handle_request()
     def post(self, ir_id: str):
         schema = IRSampleSchema(partial=('id',))
-        
-        sample = IRSample(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-
+        data = schema.load(request.get_json())
+        sample = self.sample(ir_id).from_dict(data)
         sample.set()
         return schema.dump(sample.to_dict()), 201
 
     @handle_request()
     def get(self, ir_id: str):
         schema = IRSampleSchema()
-        sample = IRSample(ir=IR(ir_id), id=request.args['id']).get()
+        sample_id = request.args['id']
+        sample = self.sample(ir_id, sample_id).get()
         return schema.dump(sample.to_dict()), 200
 
     @jwt_required()
     @handle_request()
     def put(self, ir_id: str):
         schema = IRSampleSchema(partial=('title', 'file_url'))
-        
-        sample = IRSample(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-        
+        data = schema.load(request.get_json())
+        sample_id = data['id']
+        sample = self.sample(ir_id, sample_id).get()
+        sample.from_dict(data)
         sample.update()
         return {'message': 'Sample updated.'}, 200
 
@@ -46,12 +44,8 @@ class IRSampleResource(Resource):
     @handle_request()
     def delete(self, ir_id: str):
         schema = IRSampleSchema(partial=('title', 'file_url'), only=('id',))
-        
-        sample = IRSample(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-        
+        data = schema.load(request.get_json())
+        sample_id = data['id']
+        sample = self.sample(ir_id, sample_id).get()
         sample.delete()
         return {'message': 'Sample deleted.'}, 200

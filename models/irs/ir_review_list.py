@@ -25,8 +25,8 @@ class IRReviewList(ModelList):
         filters.append(('ir_id', '==', self.ir.id))
         return self.from_list(self.collection.get(filters))
     
-    def delete(self, update_ir_stats: bool=True) -> IRReviewList:
+    def delete(self) -> IRReviewList:
         for review in self.items:
-            review.delete(update_ir_stats)
+            review.delete()
         return self
         

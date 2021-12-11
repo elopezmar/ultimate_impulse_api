@@ -4,7 +4,7 @@ from flask_restful import Resource, request
 from models.forums.forum import Forum
 from models.forums.forum_topic import ForumTopic
 from schemas.forums.forum_topic_schema import ForumTopicSchema
-from resources.utils import handle_request
+from resources.utils import handle_request, get_bool_arg
 
 
 class ForumTopicResource(Resource):
@@ -26,7 +26,7 @@ class ForumTopicResource(Resource):
     def get(self, forum_id: str):
         schema = ForumTopicSchema()
         topic = self.topic(forum_id, request.args['id']).get(
-            replies=request.args.get('replies', '').lower() == 'true'
+            replies=get_bool_arg('replies')
         )
         return schema.dump(topic.to_dict()), 200
 
@@ -35,7 +35,9 @@ class ForumTopicResource(Resource):
     def put(self, forum_id: str):
         schema = ForumTopicSchema(partial=('title', 'description'))
         data = schema.load(request.get_json())
-        topic = self.topic(forum_id).from_dict(data)
+        topic_id = data['id']
+        topic = self.topic(forum_id, topic_id).get()
+        topic.from_dict(data)
         topic.update()
         return {'message': 'Topic updated.'}, 200
 
@@ -47,6 +49,7 @@ class ForumTopicResource(Resource):
             only=('id',)
         )
         data = schema.load(request.get_json())
-        topic = self.topic(forum_id).from_dict(data)
+        topic_id = data['id']
+        topic = self.topic(forum_id, topic_id).get()
         topic.delete()
         return {'message': 'Topic deleted.'}, 200

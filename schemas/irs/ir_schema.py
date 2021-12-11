@@ -24,4 +24,4 @@ class IRSchema(Schema):
         reviews = fields.Integer(dump_only=True),
         rating = fields.Float(dump_only=True)
     ) 
-    tags = fields.List(fields.String, missing=[])
+    tags = fields.List(fields.String)

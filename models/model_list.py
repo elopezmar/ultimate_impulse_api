@@ -14,7 +14,6 @@ T = TypeVar('T', bound='ModelList')
 
 class ModelList():
     def __init__(self):
-        self.retrieved = False
         self.items: list[Model] = []
 
     @property
@@ -43,7 +42,6 @@ class ModelList():
         self.items = []
         for item in data:
             instance = self.item.from_dict(item)
-            instance.retrieved = self.retrieved
             self.items.append(instance)
         return self
 
@@ -57,7 +55,6 @@ class ModelList():
         return {name: self.to_list()}
 
     def get(self: T, filters: List[tuple]=None, order_by: List[tuple]=None, limit: int=None) -> T:
-        self.retrieved = True
         return self.from_list(self.collection.get(filters, order_by, limit))
 
     def set(self: T) -> T:

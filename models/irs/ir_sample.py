@@ -54,16 +54,15 @@ class IRSample(Model):
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be updated.", 400)
 
-        if self.file_url:
-            current = IRSample(self.ir, self.id).get()
+        current = IRSample(self.ir, self.id).get()
 
-            self.file_url = File(
-                prefix='irs_samples', url=current.file_url
-            ).overwrite(
-                data=File(url=self.file_url)
-            ).accessibility(
-                public=True
-            ).url
+        self.file_url = File(
+            prefix='irs_samples', url=current.file_url
+        ).overwrite(
+            data=File(url=self.file_url)
+        ).accessibility(
+            public=True
+        ).url
 
         return self._update()
 
@@ -71,6 +70,5 @@ class IRSample(Model):
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Sample can't be deleted.", 400)
 
-        self.get()
         File(url=self.file_url).delete()
         return self._delete()

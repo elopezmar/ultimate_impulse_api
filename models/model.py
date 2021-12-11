@@ -18,7 +18,6 @@ T = TypeVar('T', bound='Model')
 class Model():
     def __init__(self, id: str=None):
         self.id = id if id else uuid.uuid1().hex
-        self.retrieved = False
 
     @property
     def __data(self) -> dict:
@@ -64,8 +63,9 @@ class Model():
         prop: str
         val: Union[Model, ModelList, Any]
 
-        for prop, val in self.__dict__.items():
-            if not prop in remove:
+        for prop in data:
+            if not prop in remove and prop in self.__dict__:
+                val = self.__dict__[prop]
                 is_model = issubclass(type(val), Model)
                 is_modellist = issubclass(type(val), ModelList)
 
@@ -75,6 +75,18 @@ class Model():
                     val.from_list(data.get(prop, []))
                 elif is_model:
                     val.from_dict(data.get(prop, {}))
+
+        # for prop, val in self.__dict__.items():
+        #     if not prop in remove:
+        #         is_model = issubclass(type(val), Model)
+        #         is_modellist = issubclass(type(val), ModelList)
+
+        #         if not is_model and not is_modellist:
+        #             setattr(self, prop, data.get(prop, val))
+        #         elif is_modellist:
+        #             val.from_list(data.get(prop, []))
+        #         elif is_model:
+        #             val.from_dict(data.get(prop, {}))
 
         return self
                     

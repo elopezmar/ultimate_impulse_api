@@ -3,7 +3,7 @@ from flask_restful import Resource, request
 
 from models.irs.ir import IR
 from schemas.irs.ir_schema import IRSchema
-from resources.utils import handle_request
+from resources.utils import handle_request, get_bool_arg
 
 
 class IRResource(Resource):
@@ -21,9 +21,9 @@ class IRResource(Resource):
     def get(self):
         schema = IRSchema()
         ir = IR(id=request.args['id']).get(
-            samples=request.args.get('samples', '').lower() == 'true',
-            files=request.args.get('files', '').lower() == 'true',
-            reviews=request.args.get('reviews', '').lower() == 'true'
+            samples=get_bool_arg('samples'),
+            files=get_bool_arg('files'),
+            reviews=get_bool_arg('reviews')
         )
         return schema.dump(ir.to_dict()), 200
 
@@ -37,9 +37,11 @@ class IRResource(Resource):
                 'samples.file_url',
                 'files.title',
                 'files.file_url'
-        ))
+            )
+        )
         data = schema.load(request.get_json())
-        ir = IR().from_dict(data)
+        ir = IR(id=data['id']).get()
+        ir.from_dict(data)
         ir.update()
         return {'message': 'IR updated.'}, 200
 
@@ -57,6 +59,6 @@ class IRResource(Resource):
             only=('id',)
         )
         data = schema.load(request.get_json())
-        ir = IR().from_dict(data)
+        ir = IR(id=data['id']).get()
         ir.delete()
         return {'message': 'IR deleted.'}, 200

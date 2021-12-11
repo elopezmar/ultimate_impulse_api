@@ -7,5 +7,6 @@ from resources.utils import handle_request
 class UserVerifyResource(Resource):
     @handle_request()
     def put(self):
-        User(id=request.args['id']).verify()
+        user = User(id=request.args['id']).get()
+        user.verify()
         return {'message': 'User verified.'}, 200

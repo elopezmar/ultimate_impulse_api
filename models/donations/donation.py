@@ -13,7 +13,7 @@ class Donation(Model):
         super().__init__(id)
         self.owner: Owner = Owner()
         self.amount: float = None
-        self.created_at: datetime = datetime.now()
+        self.created_at: datetime = None
 
     @property
     def collection_path(self) -> str:
@@ -21,6 +21,7 @@ class Donation(Model):
 
     def set(self) -> Donation:
         self.owner.from_user(requestor)
+        self.created_at = datetime.now()
         return self._set()
 
     def delete(self) -> Donation:

@@ -9,7 +9,7 @@ from resources.irs.ir_file_resource import IRFileResource
 from resources.irs.ir_file_list_resource import IRFileListResource
 from resources.irs.ir_review_resource import IRReviewResource
 from resources.irs.ir_review_list_resource import IRReviewListResource
-from resources.irs.ir_purchase_resource import IRPurchaseListResource
+from resources.irs.ir_purchase_list_resource import IRPurchaseListResource
 
 ir_blueprint = Blueprint('ìr', __name__)
 api = Api(ir_blueprint)

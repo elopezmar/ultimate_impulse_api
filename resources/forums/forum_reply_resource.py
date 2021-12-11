@@ -27,7 +27,8 @@ class ForumReplyResource(Resource):
     @handle_request()
     def get(self, forum_id: str, topic_id: str):
         schema = ForumReplySchema()
-        reply = self.reply(forum_id, topic_id, request.args['id']).get()
+        reply_id = request.args['id']
+        reply = self.reply(forum_id, topic_id, reply_id).get()
         return schema.dump(reply.to_dict()), 200
 
     @jwt_required()
@@ -35,18 +36,18 @@ class ForumReplyResource(Resource):
     def put(self, forum_id: str, topic_id: str):
         schema = ForumReplySchema(partial=('title', 'description'))
         data = schema.load(request.get_json())
-        reply = self.reply(forum_id, topic_id).from_dict(data)
+        reply_id = data['id']
+        reply = self.reply(forum_id, topic_id, reply_id).get()
+        reply.from_dict(data)
         reply.update()
         return {'message': 'Reply updated.'}, 200
 
     @jwt_required()
     @handle_request()
     def delete(self, forum_id: str, topic_id: str):
-        schema = ForumReplySchema(
-            partial=('title', 'description'),
-            only=('id',)
-        )
+        schema = ForumReplySchema(partial=('title', 'description'), only=('id',))
         data = schema.load(request.get_json())
-        reply = self.reply(forum_id, topic_id).from_dict(data)
+        reply_id = data['id']
+        reply = self.reply(forum_id, topic_id, reply_id).get()
         reply.delete()
         return {'message': 'Reply deleted.'}, 200
