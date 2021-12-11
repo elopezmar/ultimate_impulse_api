@@ -8,29 +8,26 @@ from resources.utils import handle_request
 
 
 class ReviewCommentResource(Resource):
+    def comment(self, review_id: str, comment_id: str=None) -> ReviewComment:
+        review = Review(review_id).get()
+        comment = ReviewComment(review, comment_id)
+        return comment
+
     @jwt_required()
     @handle_request()
     def post(self, review_id: str):
         schema = ReviewCommentSchema(partial=('id',))
-        
-        review = ReviewComment(
-            review=Review(id=review_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        ).set()
-
-        return schema.dump(review.to_dict()), 201
+        data = schema.load(request.get_json())
+        comment = self.comment(review_id).from_dict(data)
+        comment.set()
+        return schema.dump(comment.to_dict()), 201
 
     @handle_request()
     def get(self, review_id: str):
         schema = ReviewCommentSchema()
-
-        review = ReviewComment(
-            review=Review(id=review_id).get(),
-            id=request.args['id']
-        ).get()
-
-        return schema.dump(review.to_dict()), 200
+        comment_id = request.args['id']
+        comment = self.comment(review_id, comment_id).get()
+        return schema.dump(comment.to_dict()), 200
 
     @jwt_required()
     @handle_request()
@@ -38,13 +35,11 @@ class ReviewCommentResource(Resource):
         schema = ReviewCommentSchema(
             partial=('description',)
         )
-
-        ReviewComment(
-            review=Review(id=review_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        ).update()
-
+        data = schema.load(request.get_json())
+        comment_id = data['id']
+        comment = self.comment(review_id, comment_id).get()
+        comment.from_dict(data)
+        comment.update()
         return {'message': 'Comment updated.'}, 200
 
     @jwt_required()
@@ -54,11 +49,8 @@ class ReviewCommentResource(Resource):
             partial=('description',),
             only=('id',)
         )
-
-        ReviewComment(
-            review=Review(id=review_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        ).delete()
-
+        data = schema.load(request.get_json())
+        comment_id = data['id']
+        comment = self.comment(review_id, comment_id).get()
+        comment.delete()
         return {'message': 'Comment deleted.'}, 200

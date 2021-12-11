@@ -29,10 +29,6 @@ class IRFile(Model):
         return 'IR File'
 
     @property
-    def remove_from_input(self) -> list:
-        return ['ir']
-
-    @property
     def remove_from_output(self) -> list:
         return ['ir']
 
@@ -84,6 +80,5 @@ class IRFile(Model):
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("File can't be deleted.", 400)
 
-        self.get()
         File(url=self.file_url).delete()
         return self._delete()

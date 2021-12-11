@@ -3,7 +3,7 @@ from flask_restful import Resource, request
 
 from models.reviews.review import Review
 from schemas.reviews.review_schema import ReviewSchema
-from resources.utils import handle_request
+from resources.utils import handle_request, get_bool_arg
 
 
 class ReviewResource(Resource):
@@ -20,8 +20,8 @@ class ReviewResource(Resource):
     def get(self):
         schema = ReviewSchema()
         review = Review(id=request.args['id']).get(
-            content=request.args.get('content', '').lower() == 'true',
-            comments=request.args.get('comments', '').lower() == 'true'
+            content=get_bool_arg('content'),
+            comments=get_bool_arg('comments')
         )
         return schema.dump(review.to_dict()), 200
 
@@ -36,7 +36,8 @@ class ReviewResource(Resource):
             )
         )
         data = schema.load(request.get_json())
-        review = Review().from_dict(data)
+        review = Review(id=data['id']).get()
+        review.from_dict(data)
         review.update()
         return {'message': 'Review updated.'}, 200
 
@@ -52,6 +53,6 @@ class ReviewResource(Resource):
             only=('id',)
         )
         data = schema.load(request.get_json())
-        review = Review().from_dict(data)
+        review = Review(id=data['id']).get()
         review.delete()
         return {'message': 'Review deleted.'}, 200

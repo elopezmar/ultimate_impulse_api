@@ -19,7 +19,7 @@ class ForumReply(Model):
         self.topic: ForumTopic = topic
         self.title: str = None
         self.description: str = None
-        self.published_at: datetime = datetime.now()
+        self.published_at: datetime = None
         self.owner: Owner = Owner()
 
     @property
@@ -39,23 +39,20 @@ class ForumReply(Model):
             return BusinessError("Reply can't be created.", 400)
 
         self.owner.from_user(requestor)
-        self.topic.update_stats(add_replies=1)
+        self.published_at = datetime.now()
+        self.topic.increment_stats(replies=1)
         return self._set()
 
     def update(self) -> ForumReply:
-        current = ForumReply(self.topic, self.id).get()
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Reply can't be updated.", 400)
         return self._update()
 
-    def delete(self, update_topic_stats: bool=True) -> ForumReply:
-        self.get()
+    def delete(self) -> ForumReply:
         owners = [self.owner.id, self.topic.owner.id]
 
         if requestor.id not in owners and requestor.role != Roles.ADMIN:
             raise BusinessError("Reply can't be deleted.", 400)
 
-        if update_topic_stats:
-            self.topic.update_stats(add_replies=-1)
-            
+        self.topic.increment_stats(replies=-1)
         return self._delete()

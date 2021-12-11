@@ -15,20 +15,26 @@ class Forum(Model):
         super().__init__(id)
         self.title: str = None
         self.description: str = None
-        self.published_at: datetime = datetime.now()
+        self.published_at: datetime = None
         self.owner: Owner = Owner()
         self.stats: ForumStats = ForumStats()
         self.topics: ForumTopicList = ForumTopicList(self)
+        self.disable_stats: bool = False
 
     @property
     def collection_path(self) -> str:
         return 'forums'
 
-    def update_stats(self, add_topics: int=0, add_replies: int=0) -> Forum:
-        self.get()
-        self.stats.topics += add_topics
-        self.stats.replies += add_replies
-        return self._update()
+    @property
+    def remove_from_output(self) -> list:
+        return ['disable_stats']
+
+    def increment_stats(self, topics: int=0, replies: int=0) -> Forum:
+        if not self.disable_stats:
+            self.get()
+            self.stats.increment(topics, replies)
+            return self._update()
+        return self
 
     def get(self, topics: bool=False) -> Forum:
         self._get()
@@ -40,6 +46,8 @@ class Forum(Model):
         if requestor.role != Roles.ADMIN:
             return BusinessError("Forum can't be created.", 400)
         self.owner.from_user(requestor)
+        self.stats.set()
+        self.published_at = datetime.now()
         return self._set()
 
     def update(self) -> Forum:
@@ -50,5 +58,6 @@ class Forum(Model):
     def delete(self) -> Forum:
         if requestor.role != Roles.ADMIN:
             raise BusinessError("Forum can't be deleted.", 400)
+        self.disable_stats = True
         self.topics.get().delete()
         return self._delete()

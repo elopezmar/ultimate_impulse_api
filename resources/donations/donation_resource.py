@@ -27,6 +27,6 @@ class DonationResource(Resource):
     def delete(self):
         schema = DonationSchema(partial=('amount',), only=('id',))
         data = schema.load(request.get_json())
-        donation = Donation().from_dict(data)
+        donation = Donation(id=data['id']).get()
         donation.delete()
         return {'message': 'Donation deleted.'}, 200

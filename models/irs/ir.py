@@ -21,7 +21,7 @@ class IR(Model):
         self.description: str = None
         self.published_at: datetime = None
         self.owner: Owner = Owner()
-        self.pics_urls: list[str] = []
+        self.pics_urls: list[str] = None
         self.premium: bool = None
         self.price: float = None
         self.discount: float = None
@@ -30,11 +30,16 @@ class IR(Model):
         self.files: IRFileList = IRFileList(self)
         self.reviews: IRReviewList = IRReviewList(self)
         self.stats: IRStats = IRStats()
-        self.tags: list[str] = []
+        self.tags: list[str] = None
+        self.disable_stats: bool = False
 
     @property
     def collection_path(self) -> str:
         return 'irs'
+
+    @property
+    def remove_from_output(self) -> list:
+        return ['disable_stats']
 
     @property
     def index(self) -> Index:
@@ -51,14 +56,12 @@ class IR(Model):
         self.discount = self.discount if self.discount != None else 0
         self.total = self.price - (self.price * (self.discount/100))
 
-    def update_stats(self, add_reviews: int=0, rating: float=0) -> IR:
-        self.get()
-        self.stats.rating = (
-            ((self.stats.reviews * self.stats.rating) + rating) 
-            / (self.stats.reviews + add_reviews)
-        )
-        self.stats.reviews += add_reviews
-        return self._update()
+    def increment_stats(self, reviews: int=0, rating: int=0) -> IR:
+        if not self.disable_stats:
+            self.get()
+            self.stats.increment(reviews, rating)
+            return self._update()
+        return self
 
     def get(self, samples: bool=False, files: bool=False, reviews: bool=False) -> IR:
         self._get()
@@ -76,9 +79,9 @@ class IR(Model):
 
         self.owner.from_user(requestor)
         self.published_at = datetime.now()
-
-        if self.premium == None:
-            self.premium = False
+        self.premium = self.premium if self.premium else False
+        self.pics_urls = self.pics_urls if self.pics_urls else []
+        self.tags = self.tags if self.tags else []
         
         for idx, pic_url in enumerate(self.pics_urls):
             self.pics_urls[idx] = File(
@@ -90,6 +93,7 @@ class IR(Model):
             ).url
 
         self.calculate_price()
+        self.stats.set()
         self.index.save()
         self._set()
         self.samples.set()
@@ -97,9 +101,7 @@ class IR(Model):
         return self
 
     def update(self) -> IR:
-        current = IR(self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be updated.", 400)
 
         for idx, pic_url in enumerate(self.pics_urls):
@@ -114,24 +116,6 @@ class IR(Model):
                     public=True
                 ).url
 
-        if self.premium == None:
-            self.premium = current.premium
-
-        if self.price == None:
-            self.price = current.price
-
-        if self.discount == None:
-            self.discount = current.discount
-
-        if self.total == None:
-            self.total = current.total
-
-        if self.pics_urls == None:
-            self.pics_urls = current.pics_urls
-
-        if self.tags == None:
-            self.tags = current.tags
-
         self.calculate_price()
         self.index.save()
         self._update()
@@ -140,14 +124,13 @@ class IR(Model):
         return self.get(samples=True, files=True)
 
     def delete(self) -> IR:
-        self.get()
-
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("IR can't be deleted.", 400)
 
+        self.disable_stats = True
         self.samples.get().delete()
         self.files.get().delete()
-        self.reviews.get().delete(update_ir_stats=False)
+        self.reviews.get().delete()
 
         for pic_url in self.pics_urls:
             File(url=pic_url).delete()

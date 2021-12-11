@@ -8,17 +8,17 @@ from resources.utils import handle_request
 
 
 class IRFileResource(Resource):
+    def file(self, ir_id: str, file_id: str=None) -> IRFile:
+        ir = IR(ir_id).get()
+        file = IRFile(ir, file_id)
+        return file
+
     @jwt_required()
     @handle_request()
     def post(self, ir_id: str):
         schema = IRFileSchema(partial=('id',))
-        
-        file = IRFile(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-
+        data = schema.load(request.get_json())
+        file = self.file(ir_id).from_dict(data)
         file.set()
         return schema.dump(file.to_dict()), 201
 
@@ -26,25 +26,18 @@ class IRFileResource(Resource):
     @handle_request()
     def get(self, ir_id: str):
         schema = IRFileSchema()
-
-        file = IRFile(
-            ir=IR(ir_id).get(), 
-            id=request.args['id']
-        ).get()
-        
+        file_id = request.args['id']
+        file = self.file(ir_id, file_id).get()
         return schema.dump(file.to_dict()), 200
 
     @jwt_required()
     @handle_request()
     def put(self, ir_id: str):
         schema = IRFileSchema(partial=('title', 'file_url'))
-        
-        file = IRFile(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-        
+        data = schema.load(request.get_json())
+        file_id = data['id']
+        file = self.file(ir_id, file_id).get()
+        file.from_dict(data)
         file.update()
         return {'message': 'File updated.'}, 200
 
@@ -52,12 +45,8 @@ class IRFileResource(Resource):
     @handle_request()
     def delete(self, ir_id: str):
         schema = IRFileSchema(partial=('title', 'file_url'), only=('id',))
-        
-        file = IRFile(
-            ir=IR(ir_id).get()
-        ).from_dict(
-            data=schema.load(request.get_json())
-        )
-        
+        data = schema.load(request.get_json())
+        file_id = data['id']
+        file = self.file(ir_id, file_id).get()
         file.delete()
         return {'message': 'File deleted.'}, 200

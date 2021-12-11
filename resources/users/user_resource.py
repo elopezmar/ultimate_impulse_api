@@ -30,7 +30,8 @@ class UserResource(Resource):
             only=('id', 'old_password', 'new_password', 'username', 'profile')
         )
         data = schema.load(request.get_json())
-        user = User().from_dict(data)
+        user = User(id=data['id']).get()
+        user.from_dict(data)
         user.update()
         return {'message': 'User updated.'}, 200
 
@@ -42,6 +43,6 @@ class UserResource(Resource):
             only=('id',)
         )
         data = schema.load(request.get_json())
-        user = User().from_dict(data)
+        user = User(id=data['id']).get()
         user.delete()
         return {'message': 'User deleted.'}, 200

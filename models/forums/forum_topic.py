@@ -22,7 +22,7 @@ class ForumTopic(Model):
         self.forum: Forum = forum
         self.title: str = None
         self.description: str = None
-        self.published_at: datetime = datetime.now()
+        self.published_at: datetime = None
         self.owner: Owner = Owner()
         self.stats: ForumTopicStats = ForumTopicStats()
         self.replies: ForumReplyList = ForumReplyList(self)
@@ -49,11 +49,13 @@ class ForumTopic(Model):
             description=self.description
         )
 
-    def update_stats(self, add_replies: int=0) -> ForumTopic:
-        self.get()
-        self.stats.replies += add_replies
-        self.forum.update_stats(add_replies=add_replies)
-        return self._update()
+    def increment_stats(self, replies: int=0) -> ForumTopic:
+        if not self.forum.disable_stats:
+            self.get()
+            self.stats.increment(replies)
+            self.forum.increment_stats(replies=replies)
+            return self._update()
+        return self
 
     def get(self, replies: bool=False) -> ForumTopic:
         self._get()
@@ -66,28 +68,24 @@ class ForumTopic(Model):
             return BusinessError("Topic can't be created.", 400)
 
         self.owner.from_user(requestor)
-        self.forum.update_stats(add_topics=1)
+        self.stats.set()
+        self.published_at = datetime.now()
+        self.forum.increment_stats(topics=1)
         self.index.save()
         return self._set()
 
     def update(self) -> ForumTopic:
-        current = ForumTopic(self.forum, self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Topic can't be updated.", 400)
 
         self.index.save()
         return self._update()
 
-    def delete(self, update_forum_stats: bool=True) -> ForumTopic:
-        self.get()
-
+    def delete(self) -> ForumTopic:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Topic can't be deleted.", 400)
 
-        if update_forum_stats:
-            self.forum.update_stats(add_topics=-1)
-            
+        self.forum.increment_stats(topics=-1)    
         self.replies.get().delete()
         self.index.delete()
         return self._delete()

@@ -28,6 +28,6 @@ class PurchaseResource(Resource):
     def delete(self):
         schema = PurchaseSchema(partial=('ir',), only=('id',))
         data = schema.load(request.get_json())
-        purchase = Purchase().from_dict(data)
+        purchase = Purchase(id=data['id']).get()
         purchase.delete()
         return {'message': 'Purchase deleted.'}, 200

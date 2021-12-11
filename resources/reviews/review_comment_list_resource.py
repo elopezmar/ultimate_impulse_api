@@ -11,4 +11,4 @@ class ReviewCommentListResource(Resource):
     def get(self, review_id: str):
         schema = ReviewCommentListSchema()
         comments = ReviewCommentList(review=Review(id=review_id)).get()
-        return schema.dump(comments.to_dict()), 200
+        return schema.dump(comments.to_dict('comments')), 200

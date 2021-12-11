@@ -17,12 +17,12 @@ class Review(Model):
         super().__init__(id)
         self.title: str = None
         self.description: str = None
-        self.published_at: datetime = datetime.now()
+        self.published_at: datetime = None
         self.pic_url: str = None
         self.owner: Owner = Owner()
         self.content: ReviewContent = ReviewContent(self)
         self.comments: ReviewCommentList = ReviewCommentList(self)
-        self.tags: list[str] = []
+        self.tags: list[str] = None
 
     @property
     def collection_path(self) -> str:
@@ -60,16 +60,18 @@ class Review(Model):
             ).url
 
         self.owner.from_user(requestor)
+        self.published_at = datetime.now()
+        self.tags = self.tags if self.tags else []
         self.index.save()
         self._set()
         self.content.set()
         return self.get(content=True)
 
     def update(self) -> Review:
-        current = Review(self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be updated.", 400)
+
+        current = Review(self.id).get()
 
         if self.pic_url:
             self.pic_url = File(
@@ -87,8 +89,6 @@ class Review(Model):
         return self.get(content=True)
 
     def delete(self) -> Review:
-        self.get()
-
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Review can't be deleted.", 400)
 

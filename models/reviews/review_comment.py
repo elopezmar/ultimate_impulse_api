@@ -18,7 +18,7 @@ class ReviewComment(Model):
         self.review: Review = review
         self.review_id: str = review.id
         self.description: str = None
-        self.created_at: datetime = datetime.now()
+        self.created_at: datetime = None
         self.owner: Owner = Owner()
 
     @property
@@ -38,22 +38,21 @@ class ReviewComment(Model):
             raise BusinessError("Comment can't be created.", 400)
 
         self.owner.from_user(requestor)
+        self.created_at = datetime.now()
         return self._set()
 
     def update(self) -> ReviewComment:
-        current = ReviewComment(self.review, self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Comment can't be updated.", 400)
-        if current.review_id != self.review.id:
+        if self.review_id != self.review.id:
             raise BusinessError("Comment doesn't belong to the review.", 404)
 
         return self._update()
 
     def delete(self) -> ReviewComment:
-        self.get()
-
-        if requestor.id not in [self.owner.id, self.review.owner.id] and requestor.role != Roles.ADMIN:
+        owners = [self.owner.id, self.review.owner.id]
+        
+        if requestor.id not in owners and requestor.role != Roles.ADMIN:
             raise BusinessError("Comment can't be deleted.", 400)
         if self.review_id != self.review.id:
             raise BusinessError("Comment doesn't belong to the review.", 404)

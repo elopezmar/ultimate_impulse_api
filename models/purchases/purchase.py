@@ -15,7 +15,7 @@ class Purchase(Model):
         super().__init__(id)
         self.ir: IR = ir or IR()
         self.owner: Owner = owner or Owner()
-        self.purchased_at: datetime = datetime.now()
+        self.purchased_at: datetime = None
         self.total: float = None
 
     @property
@@ -28,21 +28,19 @@ class Purchase(Model):
         
         self.ir.get()
         self.owner.from_user(requestor)
+        self.purchased_at = datetime.now()
         self.total = self.ir.total
         return self._set()
 
     def update(self) -> Purchase:
-        current = Purchase(id=self.id).get()
-
-        if requestor.id != current.owner.id and requestor.role != Roles.ADMIN:
+        if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Purchase can't be updated.", 400)
 
-        self.ir = IR(id=current.ir.id).get()
-        self.owner = Owner(id=current.owner.id).get()
+        self.ir.get()
+        self.owner.get()
         return self._update()
 
     def delete(self) -> Purchase:
-        self.get()
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
             raise BusinessError("Purchase can't be deleted.", 400)
         return self._delete()

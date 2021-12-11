@@ -17,8 +17,3 @@ class ForumReplyList(ModelList):
     @property
     def item(self) -> ForumReply:
         return ForumReply(self.topic)
-
-    def delete(self) -> ForumReplyList:
-        for reply in self.items:
-            reply.delete(update_topic_stats=False)
-        return self
