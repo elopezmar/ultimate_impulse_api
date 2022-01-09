@@ -39,7 +39,7 @@ class IRReview(Model):
 
     def set(self) -> IRReview:
         if not requestor.is_logged_in:
-            raise BusinessError("Review can't be created.", 400)
+            raise BusinessError(400, 'IR Reviews only can be created by logged in users')
 
         self.owner.from_user(requestor)
         self.created_at = datetime.now()
@@ -49,9 +49,9 @@ class IRReview(Model):
 
     def update(self) -> IRReview:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Review can't be updated.", 400)
+            raise BusinessError(400, 'IR Reviews only can be updated by the owner or admin users')
         if self.ir_id != self.ir.id:
-            raise BusinessError("Review doesn't belong to the IR.", 404)
+            raise BusinessError(400, 'IR Review not belong to the IR')
 
         current = IRReview(self.ir, self.id).get()
         self.ir.increment_stats(rating=(self.rating - current.rating))
@@ -59,9 +59,9 @@ class IRReview(Model):
 
     def delete(self) -> IRReview:
         if requestor.id not in [self.owner.id, self.ir.owner.id] and requestor.role != Roles.ADMIN:
-            raise BusinessError("Review can't be deleted.", 400)
+            raise BusinessError(400, 'IR Reviews only can be deleted by the owner or admin users')
         if self.ir_id != self.ir.id:
-            raise BusinessError("Review doesn't belong to the IR.", 404)
+            raise BusinessError(400, 'IR Review not belong to the IR')
 
         self.ir.increment_stats(reviews=-1, rating=(self.rating * -1))
         return self._delete()

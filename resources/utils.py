@@ -35,6 +35,6 @@ def handle_request():
             except NotFound as err:
                 return err.message, 404
             except KeyError as err:
-                return {'message': 'An id must be provided as parameter.'}, 400
+                return {'msg': f'{err.args[0]} must be provided as parameter'}, 400
         return wrapper
     return decorator

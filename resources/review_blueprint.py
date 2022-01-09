@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask.app import Flask
 from flask_restful import Api
 
 from resources.reviews.review_resource import ReviewResource
@@ -8,7 +9,7 @@ from resources.reviews.review_comment_list_resource import ReviewCommentListReso
 from resources.reviews.review_tags_resource import ReviewTagListResource
 
 review_blueprint = Blueprint('review', __name__)
-api = Api(review_blueprint)
+api = Api(review_blueprint, errors=Flask.errorhandler)
 
 api.add_resource(ReviewResource, '/review')
 api.add_resource(ReviewListResource, '/reviews')

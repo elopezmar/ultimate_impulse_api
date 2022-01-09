@@ -24,7 +24,7 @@ class Purchase(Model):
 
     def set(self) -> Purchase:
         if not requestor.is_logged_in:
-            raise BusinessError("Purchase can't be created.", 400)
+            raise BusinessError(400, 'Purchases only can be created by logged in users')
         
         self.ir.get()
         self.owner.from_user(requestor)
@@ -34,7 +34,7 @@ class Purchase(Model):
 
     def update(self) -> Purchase:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Purchase can't be updated.", 400)
+            raise BusinessError(400, 'Purchases only can be updated by the owner or admin users')
 
         self.ir.get()
         self.owner.get()
@@ -42,5 +42,5 @@ class Purchase(Model):
 
     def delete(self) -> Purchase:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Purchase can't be deleted.", 400)
+            raise BusinessError(400, 'Purchases only can be deleted by the owner or admin users')
         return self._delete()

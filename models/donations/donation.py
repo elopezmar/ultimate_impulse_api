@@ -26,5 +26,5 @@ class Donation(Model):
 
     def delete(self) -> Donation:
         if requestor.role != Roles.ADMIN:
-            raise BusinessError('Donations only can be deleted by admins.', 400)
+            raise BusinessError(400, 'Donations only can be deleted by admin users')
         return self._delete()

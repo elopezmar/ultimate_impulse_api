@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask.app import Flask
 from flask_restful import Api
 
 from resources.forums.forum_resource import ForumResource
@@ -9,7 +10,7 @@ from resources.forums.forum_reply_resource import ForumReplyResource
 from resources.forums.forum_reply_list_resource import ForumReplyListResource
 
 forum_blueprint = Blueprint('forum', __name__)
-api = Api(forum_blueprint)
+api = Api(forum_blueprint, errors=Flask.errorhandler)
 
 api.add_resource(ForumResource, '/forum')
 api.add_resource(ForumListResource, '/forums')

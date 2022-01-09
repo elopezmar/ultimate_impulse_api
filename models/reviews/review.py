@@ -48,7 +48,7 @@ class Review(Model):
         
     def set(self) -> Review:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
-            raise BusinessError("Review can't be created.", 400)
+            raise BusinessError(400, 'Reviews only can be created by collaborators or admin users')
 
         if self.pic_url:
             self.pic_url = File(
@@ -69,7 +69,7 @@ class Review(Model):
 
     def update(self) -> Review:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Review can't be updated.", 400)
+            raise BusinessError(400, 'Reviews only can be updated by the owner or admin users')
 
         current = Review(self.id).get()
 
@@ -90,7 +90,7 @@ class Review(Model):
 
     def delete(self) -> Review:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Review can't be deleted.", 400)
+            raise BusinessError(400, 'Reviews only can be deleted by the owner or admin users')
 
         self.content.get().delete()
         self.comments.get().delete()

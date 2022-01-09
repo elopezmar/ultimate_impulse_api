@@ -13,9 +13,11 @@ from models.exceptions import BusinessError
 class File():
     BUCKET_NAME = 'storage-ui-dev'
 
-    def __init__(self, prefix: str='temp', url: str=None):
+    def __init__(self, prefix: str='temp', url: str=None, name: str=None):
         if url:
             self.name = url.split('/')[-1].split('?')[0]
+        elif name:
+            self.name = name
         else:
             self.name = f'{prefix}_{uuid.uuid1().hex}'
 
@@ -58,7 +60,7 @@ class File():
         if self.name == data.name:
             return self
         if not data.blob.exists():
-            raise BusinessError(f'File {data.url} does not exists.', 404)
+            raise BusinessError(404, f'File {data.url} does not exists.')
         if self.blob.exists():
             self.blob.delete()
 

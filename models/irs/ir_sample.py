@@ -38,7 +38,7 @@ class IRSample(Model):
 
     def set(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Sample can't be created.", 400)
+            raise BusinessError(400, 'IR Samples only can be created by the IR owner or admin users')
 
         self.file_url = File(
             prefix='irs_samples'
@@ -52,7 +52,7 @@ class IRSample(Model):
 
     def update(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Sample can't be updated.", 400)
+            raise BusinessError(400, 'IR Samples only can be updated by the IR owner or admin users')
 
         current = IRSample(self.ir, self.id).get()
 
@@ -68,7 +68,7 @@ class IRSample(Model):
 
     def delete(self) -> IRSample:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Sample can't be deleted.", 400)
+            raise BusinessError(400, 'IR Samples only can be deleted by the IR owner or admin users')
 
         File(url=self.file_url).delete()
         return self._delete()

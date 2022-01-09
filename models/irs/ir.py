@@ -75,7 +75,7 @@ class IR(Model):
         
     def set(self) -> IR:
         if not requestor.role in [Roles.ADMIN, Roles.COLLABORATOR]:
-            raise BusinessError("IR can't be created.", 400)
+            raise BusinessError(400, 'IRs only can be created by collaborators or admin users')
 
         self.owner.from_user(requestor)
         self.published_at = datetime.now()
@@ -102,7 +102,7 @@ class IR(Model):
 
     def update(self) -> IR:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("IR can't be updated.", 400)
+            raise BusinessError(400, 'IRs only can be updated by the owner or admin users')
 
         for idx, pic_url in enumerate(self.pics_urls):
             pic_file = File(url=pic_url)
@@ -125,7 +125,7 @@ class IR(Model):
 
     def delete(self) -> IR:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("IR can't be deleted.", 400)
+            raise BusinessError(400, 'IRs only can be deleted by the owner or admin users')
 
         self.disable_stats = True
         self.samples.get().delete()

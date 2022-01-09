@@ -36,7 +36,7 @@ class ForumReply(Model):
 
     def set(self) -> ForumReply:
         if not requestor.is_logged_in:
-            return BusinessError("Reply can't be created.", 400)
+            return BusinessError(400, 'Forum Replies only can be created by logged in users')
 
         self.owner.from_user(requestor)
         self.published_at = datetime.now()
@@ -45,14 +45,14 @@ class ForumReply(Model):
 
     def update(self) -> ForumReply:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Reply can't be updated.", 400)
+            raise BusinessError(400, 'Forum Replies only can be updated by the owner or admin users')
         return self._update()
 
     def delete(self) -> ForumReply:
         owners = [self.owner.id, self.topic.owner.id]
 
         if requestor.id not in owners and requestor.role != Roles.ADMIN:
-            raise BusinessError("Reply can't be deleted.", 400)
+            raise BusinessError(400, 'Forum Replies only can be deleted by the owner or admin users')
 
         self.topic.increment_stats(replies=-1)
         return self._delete()

@@ -75,19 +75,6 @@ class Model():
                     val.from_list(data.get(prop, []))
                 elif is_model:
                     val.from_dict(data.get(prop, {}))
-
-        # for prop, val in self.__dict__.items():
-        #     if not prop in remove:
-        #         is_model = issubclass(type(val), Model)
-        #         is_modellist = issubclass(type(val), ModelList)
-
-        #         if not is_model and not is_modellist:
-        #             setattr(self, prop, data.get(prop, val))
-        #         elif is_modellist:
-        #             val.from_list(data.get(prop, []))
-        #         elif is_model:
-        #             val.from_dict(data.get(prop, {}))
-
         return self
                     
     def to_dict(self, collections: bool=True) -> dict:
@@ -116,7 +103,7 @@ class Model():
             self.__data = self.__document.get()
             return self
         except NotFound:
-            raise BusinessError(f'{self.entity_name} not found', 404)
+            raise BusinessError(404, f'{self.entity_name} not found')
 
     def _set(self: T) -> T:
         self.__data = self.__document.set(self.__data)

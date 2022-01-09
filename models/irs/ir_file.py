@@ -47,7 +47,7 @@ class IRFile(Model):
         
     def set(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("File can't be created.", 400)
+            raise BusinessError(400, 'IR Files only can be created by the IR owner or admin users')
 
         self.file_url = File(
             prefix='irs_files'
@@ -61,7 +61,7 @@ class IRFile(Model):
 
     def update(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("File can't be updated.", 400)
+            raise BusinessError(400, 'IR Files only can be updated by the IR owner or admin users')
 
         if self.file_url:
             current = IRFile(self.ir, self.id).get()
@@ -78,7 +78,7 @@ class IRFile(Model):
 
     def delete(self) -> IRFile:
         if requestor.id != self.ir.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("File can't be deleted.", 400)
+            raise BusinessError(400, 'IR Files only can be deleted by the IR owner or admin users')
 
         File(url=self.file_url).delete()
         return self._delete()

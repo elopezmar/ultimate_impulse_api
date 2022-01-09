@@ -12,9 +12,7 @@ class FileResource(Resource):
     @jwt_required()
     @handle_request()
     def get(self):
-        schema = FileSchema(partial=('b64_data',))
-        data = schema.load(request.get_json())
-        file = File(url=data['url'])
+        file = File(name=request.args['name'])
         return {'url': file.signed_url}, 200
 
     @jwt_required()

@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask.app import Flask
 from flask_restful import Api
 
 from resources.users.user_resource import UserResource
@@ -8,7 +9,7 @@ from resources.users.user_verify_resource import UserVerifyResource
 from resources.users.user_purchase_list_resource import UserPurchaseListResource
 
 user_blueprint = Blueprint('user', __name__)
-api = Api(user_blueprint)
+api = Api(user_blueprint, errors=Flask.errorhandler)
 
 api.add_resource(UserResource, '/user')
 api.add_resource(UserListResource, '/users')

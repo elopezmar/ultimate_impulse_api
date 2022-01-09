@@ -35,7 +35,7 @@ class ReviewComment(Model):
 
     def set(self) -> ReviewComment:
         if not requestor.is_logged_in:
-            raise BusinessError("Comment can't be created.", 400)
+            raise BusinessError(400, 'Review comments only can be created by logged in users')
 
         self.owner.from_user(requestor)
         self.created_at = datetime.now()
@@ -43,9 +43,9 @@ class ReviewComment(Model):
 
     def update(self) -> ReviewComment:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Comment can't be updated.", 400)
+            raise BusinessError(400, 'Review comments only can be updated by the owner or admin users')
         if self.review_id != self.review.id:
-            raise BusinessError("Comment doesn't belong to the review.", 404)
+            raise BusinessError(400, 'Review comment not belong to the review')
 
         return self._update()
 
@@ -53,8 +53,8 @@ class ReviewComment(Model):
         owners = [self.owner.id, self.review.owner.id]
         
         if requestor.id not in owners and requestor.role != Roles.ADMIN:
-            raise BusinessError("Comment can't be deleted.", 400)
+            raise BusinessError(400, 'Review comments only can be deleted by the owner or admin users')
         if self.review_id != self.review.id:
-            raise BusinessError("Comment doesn't belong to the review.", 404)
+            raise BusinessError(400, 'Review comment not belong to the review')
 
         return self._delete()

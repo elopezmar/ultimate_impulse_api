@@ -46,13 +46,13 @@ class User(Model):
         self.verified = False
 
         if not self.role in [Roles.USER, Roles.ADMIN, Roles.COLLABORATOR]:
-            raise BusinessError(f"Role {self.role} doesn't exists.", 400)
+            raise BusinessError(400, 'Invalid user role')
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR] and not requestor.role == Roles.ADMIN:
-            raise BusinessError('Only admin users can create admins or collaborators.', 400)
+            raise BusinessError(400, 'Only admin users can create collaborators or admin users')
         if UserList().get([('email', '==', self.email)]).items:
-            raise BusinessError('Email already exists.', 400)
+            raise BusinessError(400, 'Email already exists')
         if UserList().get([('username', '==', self.username)]).items:
-            raise BusinessError('Username already exists.', 400)
+            raise BusinessError(400, 'Username already exists')
         if self.role in [Roles.ADMIN, Roles.COLLABORATOR]:
             self.verified = True
 
@@ -63,19 +63,19 @@ class User(Model):
 
     def update(self) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("User can't be updated.", 400)
+            raise BusinessError(400, 'Users only can be updated by the owner or admin users')
 
         current = User(self.id).get()
 
         if self.username and self.username != current.username:
             if UserList().get([('username', '==', self.username)]).items:
-                raise BusinessError('Username already exists.', 400)
+                raise BusinessError(400, 'Username already exists')
         
         if self.old_password and self.new_password:
             if not safe_str_cmp(self.old_password, current.password):
-                raise BusinessError('Old password is incorrect.', 400)
+                raise BusinessError(400, 'Old password is incorrect')
             elif safe_str_cmp(self.new_password, current.password):
-                raise BusinessError('New password cannot be old password.', 400)
+                raise BusinessError(404, 'New password cannot be old password')
             self.password = self.new_password
 
         self.profile.update(current.profile.pic_url)
@@ -83,7 +83,7 @@ class User(Model):
 
     def delete(self) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("User can't be deleted.", 400)
+            raise BusinessError(400, 'Users only can be deleted by the owner or admin users')
 
         self.profile.delete()
         return self._delete()
@@ -91,11 +91,11 @@ class User(Model):
     def login(self) -> Tuple[str, User]:
         for user in UserList().get([('email', '==', self.email)]).items:
             if not user.verified:
-                raise BusinessError('User not verified.', 400)
+                raise BusinessError(400, 'User not verified')
             if not safe_str_cmp(user.password, self.password):
-                raise BusinessError('Invalid email or password.', 400)
+                raise BusinessError(400, 'Invalid email or password')
             return create_access_token(user.id), user
-        raise BusinessError('User not found.', 404)
+        raise BusinessError(404, 'User not found')
 
     def verify(self) -> User:
         self.verified = True

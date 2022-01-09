@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask.app import Flask
 from flask_restful import Api
 
 from resources.irs.ir_resource import IRResource
@@ -12,7 +13,7 @@ from resources.irs.ir_review_list_resource import IRReviewListResource
 from resources.irs.ir_purchase_list_resource import IRPurchaseListResource
 
 ir_blueprint = Blueprint('ìr', __name__)
-api = Api(ir_blueprint)
+api = Api(ir_blueprint, errors=Flask.errorhandler)
 
 api.add_resource(IRResource, '/ir')
 api.add_resource(IRListResource, '/irs')

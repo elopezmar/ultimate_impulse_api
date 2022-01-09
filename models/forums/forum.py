@@ -44,7 +44,7 @@ class Forum(Model):
             
     def set(self) -> Forum:
         if requestor.role != Roles.ADMIN:
-            return BusinessError("Forum can't be created.", 400)
+            return BusinessError(400, 'Forums only can be created by admin users')
         self.owner.from_user(requestor)
         self.stats.set()
         self.published_at = datetime.now()
@@ -52,12 +52,12 @@ class Forum(Model):
 
     def update(self) -> Forum:
         if requestor.role != Roles.ADMIN:
-            raise BusinessError("Forum can't be updated.", 400)
+            raise BusinessError(400, 'Forums only can be updated by admin users')
         return self._update()
 
     def delete(self) -> Forum:
         if requestor.role != Roles.ADMIN:
-            raise BusinessError("Forum can't be deleted.", 400)
+            raise BusinessError(400, 'Forums only can be deleted by admin users')
         self.disable_stats = True
         self.topics.get().delete()
         return self._delete()

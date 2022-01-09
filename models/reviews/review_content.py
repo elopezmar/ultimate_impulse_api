@@ -34,11 +34,11 @@ class ReviewContent(ModelList):
             self.retrieved = True
             return self
         except NotFound:
-            raise BusinessError('Content not found.', 404)
+            raise BusinessError(404, 'Review content not found')
 
     def set(self) -> ReviewContent:
-        if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Content can't be created.", 400)
+        if requestor.id != self.review.owner.id and requestor.role != Roles.ADMIN:
+            raise BusinessError(400, 'Review content only can be created by the review owner or admin users')
 
         for section in self.items:
             section.set()
@@ -47,8 +47,8 @@ class ReviewContent(ModelList):
         return self.from_dict(self.name, data)
 
     def update(self) -> ReviewContent:
-        if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Content can't be updated.", 400)
+        if requestor.id != self.review.owner.id and requestor.role != Roles.ADMIN:
+            raise BusinessError(400, 'Review content only can be updated by the review owner owner or admin users')
 
         for section in self.items:
             section.update()
@@ -57,8 +57,8 @@ class ReviewContent(ModelList):
         return self.from_dict(self.name, data)
 
     def delete(self) -> ReviewContent:
-        if requestor.id != self.review.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Content can't be deleted.", 400)
+        if requestor.id != self.review.owner.id and requestor.role != Roles.ADMIN:
+            raise BusinessError(400, 'Review content only can be deleted by the review owner owner or admin users')
             
         for section in self.items:
             section.delete()

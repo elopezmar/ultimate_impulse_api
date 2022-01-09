@@ -65,7 +65,7 @@ class ForumTopic(Model):
 
     def set(self) -> ForumTopic:
         if not requestor.is_logged_in:
-            return BusinessError("Topic can't be created.", 400)
+            return BusinessError(400, 'Forum Topics only can be created by logged in users')
 
         self.owner.from_user(requestor)
         self.stats.set()
@@ -76,14 +76,14 @@ class ForumTopic(Model):
 
     def update(self) -> ForumTopic:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Topic can't be updated.", 400)
+            raise BusinessError(400, 'Forum Topics only can be updated by the owner or admin users')
 
         self.index.save()
         return self._update()
 
     def delete(self) -> ForumTopic:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:
-            raise BusinessError("Topic can't be deleted.", 400)
+            raise BusinessError(400, 'Forum Topics only can be deleted by the owner or admin users')
 
         self.forum.increment_stats(topics=-1)    
         self.replies.get().delete()
