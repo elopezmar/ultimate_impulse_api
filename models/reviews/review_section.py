@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from cloud_storage.file import File
 from models.model import Model
+from urllib.parse import urlparse
 
 
 class ReviewSection(Model):
@@ -22,6 +23,16 @@ class ReviewSection(Model):
             ).accessibility(
                 public=True
             ).url
+
+        links = self.youtube_links
+        self.youtube_links = []
+
+        for link in links:
+            parsed = urlparse(link)
+            if parsed.query != '':
+                video_id = parsed.query.split('=')[1].split('&')[0]
+                embed_link = f'https://www.youtube.com/embed/{video_id}'
+                self.youtube_links.append(embed_link)
 
         return self
 
