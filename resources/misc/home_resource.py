@@ -33,6 +33,7 @@ class HomeResource(Resource):
             limit=5
         )
         return {
+            # TODO: Enviar fondo de la sección
             'home': {
                 'irs': ir_schema.dump(irs.to_list()),
                 'news': review_schema.dump(news.to_list()),

@@ -33,11 +33,10 @@ class IRFile(Model):
         return ['ir']
 
     def calculate_url(self) -> IRFile:
-        if self.ir.premium:
-            if requestor.is_logged_in:
-                self.file_url = File(url=self.file_url).signed_url
-            else:
-                self.file_url = None
+        if requestor.is_logged_in:
+            self.file_url = File(url=self.file_url).signed_url
+        else:
+            self.file_url = None
         return self
 
     def get(self) -> IRFile:
@@ -54,7 +53,7 @@ class IRFile(Model):
         ).overwrite(
             data=File(url=self.file_url)
         ).accessibility(
-            public=not self.ir.premium
+            public=False
         ).url
 
         return self._set()
