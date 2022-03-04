@@ -35,21 +35,9 @@ class HomeResource(Resource):
         )
         return {
             'home': {
-                'irs': {
-                    'background': File(name='resource_home_background_irs').url,
-                    'items': ir_schema.dump(irs.to_list())
-                },
-                'news': {
-                    'background': File(name='resource_home_background_news').url,
-                    'items': review_schema.dump(news.to_list())
-                },
-                'music_production': {
-                    'background': File(name='resource_home_background_music_production').url,
-                    'items': review_schema.dump(music_production.to_list())
-                },
-                'reviews': {
-                    'background': File(name='resource_home_background_reviews').url,
-                    'items': review_schema.dump(reviews.to_list())
-                }
+                'irs': ir_schema.dump(irs.to_list()),
+                'news': review_schema.dump(news.to_list()),
+                'music_production': review_schema.dump(music_production.to_list()),
+                'reviews': review_schema.dump(reviews.to_list())
             }
         }, 200
