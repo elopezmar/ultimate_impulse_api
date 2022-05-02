@@ -3,8 +3,12 @@ from datetime import datetime
 
 from typing import Tuple
 
+from flask_restful import request
 from flask_jwt_extended import create_access_token
 from werkzeug.security import safe_str_cmp
+
+from mail.client import Client
+from mail.messages.activate_account import activate_account
 
 from models.model import Model
 from models.users.user_profile import UserProfile
@@ -41,6 +45,11 @@ class User(Model):
     def remove_from_output(self) -> list:
         return ['old_password', 'new_password']
 
+    def send_activation_email(self):
+        link = f'{request.base_url}/verify?id={self.id}'
+        mappings = {'username': self.username, 'link': link}
+        Client().send_email(self.email, activate_account, mappings)
+
     def set(self) -> User:
         self.role = self.role if self.role else Roles.USER
         self.verified = False
@@ -59,7 +68,9 @@ class User(Model):
         self.created_at = datetime.now()
         self.profile.set()
         self.stats.set()
-        return self._set()
+        self._set()
+        self.send_activation_email()
+        return self
 
     def update(self) -> User:
         if requestor.id != self.id and requestor.role != Roles.ADMIN:
