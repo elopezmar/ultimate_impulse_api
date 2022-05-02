@@ -1,5 +1,6 @@
 from flask_restful import Resource
 
+from cloud_storage.file import File
 from models.irs.ir_list import IRList
 from models.reviews.review_list import ReviewList
 from schemas.irs.ir_schema import IRSchema
@@ -16,7 +17,7 @@ class HomeResource(Resource):
             order_by=[('published_at', 'desc')],
             limit=5
         )
-        #TODO: Necesita incide en firestore
+        #TODO: Necesita indice en firestore
         news = ReviewList().get(
             filters=[('tags', 'array_contains', 'NEWS')],
             order_by=[('published_at', 'desc')],
@@ -33,7 +34,6 @@ class HomeResource(Resource):
             limit=5
         )
         return {
-            # TODO: Enviar fondo de la sección
             'home': {
                 'irs': ir_schema.dump(irs.to_list()),
                 'news': review_schema.dump(news.to_list()),
