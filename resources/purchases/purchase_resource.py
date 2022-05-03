@@ -4,7 +4,7 @@ from flask_restful import Resource, request
 from models.irs.ir import IR
 from models.purchases.purchase import Purchase
 from schemas.purchases.purchase_schema import PurchaseSchema
-from resources.utils import handle_request
+from resources.utils import get_bool_arg, handle_request
 
 
 class PurchaseResource(Resource):
@@ -20,7 +20,9 @@ class PurchaseResource(Resource):
     @handle_request()
     def get(self):
         schema = PurchaseSchema()
-        purchase = Purchase(id=request.args['id']).get()
+        purchase = Purchase(id=request.args['id']).get(
+            ir_files=get_bool_arg('ir-files')
+        )
         return schema.dump(purchase.to_dict()), 200
 
     @jwt_required()

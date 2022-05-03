@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from typing import Tuple
+from uuid import uuid1
 
 from flask_restful import request
 from flask_jwt_extended import create_access_token
@@ -9,6 +10,7 @@ from werkzeug.security import safe_str_cmp
 
 from mail.client import Client
 from mail.messages.activate_account import activate_account
+from mail.messages.reset_password import reset_password
 
 from models.model import Model
 from models.users.user_profile import UserProfile
@@ -111,3 +113,21 @@ class User(Model):
     def verify(self) -> User:
         self.verified = True
         return self._update()
+
+    @classmethod
+    def reset_password(cls, email: str) -> User:
+        users = UserList().get_by_email(email)
+        
+        if not users.items:
+            raise BusinessError(404, f'User with email {email} not found')
+
+        user = users.items[0]
+        user.password = uuid1().hex.upper()[:10]
+        user._update()
+
+        mappings = {'password': user.password}
+        Client().send_email(user.email, reset_password, mappings)
+        
+        return user
+
+

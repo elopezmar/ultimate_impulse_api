@@ -22,6 +22,12 @@ class Purchase(Model):
     def collection_path(self) -> str:
         return 'user_purchases'
 
+    def get(self, ir_files: bool=False) -> Purchase:
+        self._get()
+        if ir_files:
+            self.ir.files.get(force_signed_url=True)
+        return self
+
     def set(self) -> Purchase:
         if not requestor.is_logged_in:
             raise BusinessError(400, 'Purchases only can be created by logged in users')
@@ -30,7 +36,9 @@ class Purchase(Model):
         self.owner.from_user(requestor)
         self.purchased_at = datetime.now()
         self.total = self.ir.total
-        return self._set()
+        self._set()
+        self.ir.files.get(force_signed_url=True)
+        return self
 
     def update(self) -> Purchase:
         if requestor.id != self.owner.id and requestor.role != Roles.ADMIN:

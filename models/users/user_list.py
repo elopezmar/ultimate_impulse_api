@@ -10,3 +10,6 @@ class UserList(ModelList):
     @property
     def item(self) -> um.User:
         return um.User()
+
+    def get_by_email(self, email: str) -> UserList:
+        return self.get([('email', '==', email)])

@@ -32,8 +32,8 @@ class IRFile(Model):
     def remove_from_output(self) -> list:
         return ['ir']
 
-    def calculate_url(self) -> IRFile:
-        if requestor.is_logged_in:
+    def calculate_url(self, force_signed_url: bool=False) -> IRFile:
+        if force_signed_url or (requestor.is_logged_in and not self.ir.premium):
             self.file_url = File(url=self.file_url).signed_url
         else:
             self.file_url = None

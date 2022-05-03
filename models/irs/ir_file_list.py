@@ -19,9 +19,9 @@ class IRFileList(ModelList):
     def item(self) -> IRFile:
         return IRFile(self.ir)
 
-    def get(self, filters: list=None) -> IRFileList:
+    def get(self, filters: list=None, force_signed_url: bool=False) -> IRFileList:
         self.retrieved = True
         self.from_list(self.collection.get(filters))
         for item in self.items:
-            item.calculate_url()
+            item.calculate_url(force_signed_url=force_signed_url)
         return self
